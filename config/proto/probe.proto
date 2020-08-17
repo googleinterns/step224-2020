@@ -3,6 +3,7 @@ syntax = "proto3";
 package = hermes;
 
 import "github.com/google/cloudprober/metrics/proto/dist.proto";
+import "github.com/googleinterns/step224-2020/config/proto/targets.proto";
 
 option go_package = "github.com/googleinterns/step224-2020/config/proto"
 

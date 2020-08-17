@@ -1,8 +1,8 @@
 syntax = "proto2";
 
-package hermes.targets
+package hermes;
 
-option go_package = "github.com/googleinterns/hermes/targets/proto";
+option go_package = "github.com/googleinterns/step224-2020/targets/proto";
 
 message TargetsDef {
   enum TargetSystem {
