@@ -25,8 +25,8 @@ message TargetsDef {
 // Necessary when connecting to an API (e.g. Ceph).
 // Unclear yet if we need this for GCS.
 message ConnectionDetails {
-  string target_url = 1;
-  int port = 2;
+  required string target_url = 1;
+  int port = 2; // Required for Ceph, but not for GCS since we will use the GCS go client library.
   
   // API key for the Ceph S3 API (if using Ceph) - irrelevant for GCS.
   // API key can be gotten from your Ceph radosgw instance.

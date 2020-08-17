@@ -12,6 +12,7 @@ service Hermes {
   // Start monitoring a new storage system.
   rpc StartMonitoringStorageSystem(HermesProbeRequest) returns (HermesProbeResponse) {}
 
+  // Stop monitoring a storage system that is currently being monitored.
   rpc StopMonitoringStorageSystem(StopMonitoringSystemRequest) returns (StopMonitoringSystemResponse) {}
 
   // Lists the storage systems being monitored at the moment.

@@ -16,11 +16,11 @@ message HermesProbeDef {
     CEPH = 2;
   }
 
-  // Type of Probe
+  // Probe types currently supported
   enum ProbeType {
-    WRITE = 1;
-    DELETE = 2;
-    CHECK = 3;
+    GET = 1; // GET probe is for getting an object (file) from a storage system.
+    PUT = 2; // PUT probe is for putting an object (file) into a storage system.  
+    DELETE = 3; // DELETE probe is for deleting an object (file) from a storage system.
   }
 
   TargetSystem target_system = 3;
@@ -32,8 +32,8 @@ message HermesProbeDef {
   optional int32 timeout_sec = 6 [default = 60]; // Timeout in seconds
 
   // If specified, latency is stored as a distribution
-  optional metrics.Dist probe_latency_distribution = 7;
-  optional metrics.Dist api_call_latency_distribution = 8;
+  optional metrics.Dist probe_latency_distribution = 7; // This measures the latency of Hermes' probes, allowing you to diagnose a network issue or issue with Hermes.
+  optional metrics.Dist api_call_latency_distribution = 8; // This measures the latency of the API calls for the relevant storage system targeted.
 
   // Valid values: "ns", "us" (or "µs"), "ms", "s", "m", "h".
   optional string latency_unit = 9 [default = "us"];
