@@ -1,3 +1,7 @@
+/*
+  This proto defines the initial probe interface for Hermes probes.
+  It is used in a variety of other files as it is the top-level probe interface.
+*/
 syntax = "proto3";
 
 package hermes;
@@ -6,7 +10,8 @@ import "github.com/google/cloudprober/metrics/proto/dist.proto";
 import "github.com/googleinterns/step224-2020/config/proto/targets.proto";
 
 option go_package = "github.com/googleinterns/step224-2020/config/proto";
-
+  // This defines the top-level probe interface for Hermes probes.
+  // All Hermes probes should extend this probe config.
 message HermesProbeDef {
   required string probe_name= 1;
   required targets.TargetsDef targets = 2;
@@ -45,6 +50,7 @@ message HermesProbeDef {
 }
 
 // Simple Key-Value pair for additional metric labels
+// Uses key, value instead of Map to allow for `repeated` keyword.
 message AdditionalLabel {
   required string key = 1;
   required string value = 2;
