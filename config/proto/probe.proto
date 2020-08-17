@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package = hermes;
+
+import "github.com/google/cloudprober/metrics/proto/dist.proto";
+
+option go_package = "github.com/googleinterns/step224-2020/config/proto"
+
+message HermesProbeDef {
+  required string probe_name= 1;
+  required targets.TargetsDef targets = 2;
+
+  enum TargetSystem {
+    GCS = 1;
+    CEPH = 2;
+  }
+
+  // Type of Probe
+  enum ProbeType {
+    WRITE = 1;
+    DELETE = 2;
+    CHECK = 3;
+  }
+
+  TargetSystem target_system = 3;
+  ProbeType probe_type = 4;
+
+  optional int32 interval_sec = 5 [default = 3600]; // Probing interval in seconds
+
+  // Probes will not retry, they will fail if they timeout.
+  optional int32 timeout_sec = 6 [default = 60]; // Timeout in seconds
+
+  // If specified, latency is stored as a distribution
+  optional metrics.Dist probe_latency_distribution = 7;
+  optional metrics.Dist api_call_latency_distribution = 8;
+
+  // Valid values: "ns", "us" (or "µs"), "ms", "s", "m", "h".
+  optional string latency_unit = 9 [default = "us"];
+
+  // Additional labels for the probe latency and API call latency distribution metrics.
+  // Add as key-value pairs
+  repeated AdditionalLabel probe_latency_additional_label = 10;
+  repeated AdditionalLabel api_call_latency_additional_label = 11;
+}
+
+// Simple Key-Value pair for additional metric labels
+message AdditionalLabel {
+  required string key = 1;
+  required string value = 2;
+}
+

@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package hermes;
+
+import "github.com/googleinterns/step224-2020/config/proto/probe.proto";
+import "github.com/googleinterns/step224-2020/config/proto/targets.proto";
+
+option go_package = "github.com/googleinterns/step224-2020/config/proto";
+
+service Hermes {
+
+  // Start monitoring a new storage system.
+  rpc StartMonitoringStorageSystem(HermesProbeRequest) returns (HermesProbeResponse) {}
+
+  rpc StopMonitoringStorageSystem(StopMonitoringSystemRequest) returns (StopMonitoringSystemResponse) {}
+
+  // Lists the storage systems being monitored at the moment.
+  rpc ListMonitoredStorageSystems(ListMonitoredSystemsRequest) returns (ListMonitoredSystemsResponse) {}
+}
+
+message HermesProbeRequest {
+  required HermesProbeDef probe_confg = 1;
+}
+
+message HermesProbeResponse {}
+
+message StopMonitoringSystemRequest {
+ required Target target = 1;
+}
+
+message StopMonitoringSystemResponse {}
+
+message ListMonitoredSystemsRequest {}
+
+message ListMonitoredSystemsResponse {
+  repeated Target target = 1;
+}
