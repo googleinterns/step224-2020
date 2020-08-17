@@ -4,6 +4,7 @@ package hermes;
 
 option go_package = "github.com/googleinterns/step224-2020/targets/proto";
 
+// Definition of a Target, a storage system to be probed by a specific probe.
 message TargetsDef {
   enum TargetSystem {
     GOOGLE_CLOUD_STORAGE = 0;
@@ -11,22 +12,29 @@ message TargetsDef {
   }
 
   enum ConnectionType {
-   HTTP = 0;
-   HTTPS = 1;
+     HTTP = 0;
+     HTTPS = 1;
   }
 
   required TargetSystem target_system = 1;
-  ConnectionType connection_type = 2;
+  required ConnectionType connection_type = 2;
   ConnectionDetails connection_details = 3;
-  required int64 total_space_allocated = 4;
+  required int64 total_space_allocated = 4; // in MBs.
 }
 
+// Necessary when connecting to an API (e.g. Ceph).
+// Unclear yet if we need this for GCS.
 message ConnectionDetails {
   string target_url = 1;
   int port = 2;
+  
+  // API key for the Ceph S3 API (if using Ceph) - irrelevant for GCS.
+  // API key can be gotten from your Ceph radosgw instance.
+  // Necessary for interacting with the Ceph S3 API.
   string api_key = 3;
 }
 
+// Allows the user to define multiple targets.
 message Targets {
   repeated TargetDef targets = 1;
 }

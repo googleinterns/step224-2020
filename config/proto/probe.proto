@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package = hermes;
+package hermes;
 
 import "github.com/google/cloudprober/metrics/proto/dist.proto";
 import "github.com/googleinterns/step224-2020/config/proto/targets.proto";
@@ -49,4 +49,3 @@ message AdditionalLabel {
   required string key = 1;
   required string value = 2;
 }
-

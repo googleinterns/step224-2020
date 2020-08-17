@@ -25,7 +25,7 @@ message HermesProbeRequest {
 message HermesProbeResponse {}
 
 message StopMonitoringSystemRequest {
- required Target target = 1;
+  repeated targets.TargetsDef target = 1;
 }
 
 message StopMonitoringSystemResponse {}
@@ -33,5 +33,5 @@ message StopMonitoringSystemResponse {}
 message ListMonitoredSystemsRequest {}
 
 message ListMonitoredSystemsResponse {
-  repeated Target target = 1;
+  repeated targets.TargetsDef target = 1;
 }
