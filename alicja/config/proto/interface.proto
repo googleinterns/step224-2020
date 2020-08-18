@@ -18,12 +18,12 @@ service Hermes_Ceph {
   rpc DeleteFile(DeleteFileRequest) returns DeleteFileResponse;
 }
 
+// HermesFile (file name and target) need to be specified so that Hermes knows what file to create, and which storage system to create it on.
 message HermesFile {
   string name = 1;
   targets.TargetsDef target = 2; 
 }
 
-// HermesFile (file name and target) need to be specified so that hermes knows where and what file to create
 message PutFileRequest {
   HermesFile file = 1;
   string contents = 2;
