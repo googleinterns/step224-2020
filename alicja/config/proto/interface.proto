@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package hermes;
 
-import config/proto/targets.proto;
+import "github.com/googleinterns/step224-2020/config/proto/targets.proto";
 
 service Hermes_Ceph {
   rpc PutFile(PutFileRequest) returns PutFileResponse;
