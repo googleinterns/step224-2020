@@ -1,3 +1,5 @@
+//This proto defines the Hermes - Cloud Prober interface config
+
 syntax = "proto3";
 
 package hermes;
@@ -5,39 +7,46 @@ package hermes;
 import "github.com/googleinterns/step224-2020/config/proto/targets.proto";
 
 service Hermes_Ceph {
+  //Create and upload a file to the storage system
   rpc PutFile(PutFileRequest) returns PutFileResponse;
+  
+  //Retrieve a file from the storage system
   rpc GetFile(GetFileRequest) returns GetFileResponse;
+  
+  //Delete a file from the storage system
   rpc DeleteFile(DeleteFileRequest) returns DeleteFileResponse;
 }
 
 message HermesFile {
-  required string name = 1;
-  required Target target = 2; 
+  string name = 1;
+  Target target = 2; 
 }
 
+// HermesFile (file name and target) need to be specified so that hermes knows where and what file to create
 message PutFileRequest {
-  required HermesFile file = 1;  
+  HermesFile file = 1;
+  string contents = 2;
 }
 
 message PutFileResponse {
-  required int32 exit_code = 1; 
+  int32 exit_code = 1; 
 }
 
 message GetFileRequest {
-  required HermesFile file = 1;
+  HermesFile file = 1;
 }
 
 message GetFileResponse {
-  required int32 exit_code = 1;
-  optional string contents = 2;
-  optional string name = 3;  
+  int32 exit_code = 1;
+  string name = 2;
+  string contents = 3  
 }
 
 message DeleteFileRequest {
-  required HermesFile file = 1;
+  HermesFile file = 1;
 }
 
 message DeleteFileResponse {
-  required int32 exit_code = 1;
-  optional string name = 2;
+  int32 exit_code = 1;
+  string name = 2;
 }
