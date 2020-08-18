@@ -19,36 +19,40 @@ service Hermes_Ceph {
   rpc DeleteFile(DeleteFileRequest) returns DeleteFileResponse;
 }
 
-// HermesFile (file name and target) need to be specified so that Hermes knows what file to create, and which storage system to create it on.
+
 message HermesFile {
-  string name = 1;
-  targets.TargetsDef target = 2; 
+  string name = 1; // REQUIRED field
+  TargetsDef target = 2; // REQUIRED field for PutFileRequest, GetFileRequest and DeleteFileRequest OPTIONAL field for GetFileResponse  
+  string contents = 3; // REQUIRED field for PutFileRequest OPTIONAL field for GetFileResponse
 }
 
+// HermesFile (name, contents and target) need to be specified so that Hermes knows what file to create, and which storage system to create it on
 message PutFileRequest {
   HermesFile file = 1;
-  string contents = 2;
 }
 
+// returns the exit code after the rpc GetFile
 message PutFileResponse {
-  int32 exit_code = 1; 
+  enum exit_code = 1; //REQUIRED field
 }
 
+// HermesFile (name and target, contents optional) need to be specified so that Hermes knows what file to retrieve and from which storage system to retrieve it from
 message GetFileRequest {
-  HermesFile file = 1;
+  HermesFile file = 1; 
 }
 
+// returns the exit code after the rpc GetFile if GetFile suceeded we return the file (name and contents required) and if GetFile fails we do not
 message GetFileResponse {
-  int32 exit_code = 1;
-  string name = 2;
-  string contents = 3  
+  enum exit_code = 1; // REQUIRED field
+  HermesFile file = 2; // OPTIONAL field
 }
 
+// HermesFile (name and target, contents optional) need to be specified so that Hermes knows what file to delete and from which storage system to delete it from 
 message DeleteFileRequest {
-  HermesFile file = 1;
+  HermesFile file = 1; //REQUIRED field
 }
 
+// returns the exit code after the rpc DeleteFile
 message DeleteFileResponse {
-  int32 exit_code = 1;
-  string name = 2;
+  enum exit_code = 1; // REQUIRED field
 }
