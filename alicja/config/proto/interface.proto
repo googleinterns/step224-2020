@@ -4,6 +4,7 @@ syntax = "proto3";
 
 package hermes;
 
+option go_package = "github.com/googleinterns/step224-2020/config/proto"
 import "github.com/googleinterns/step224-2020/config/proto/targets.proto";
 
 service Hermes_Ceph {
