@@ -21,6 +21,10 @@ service HermesProber {
   rpc DeleteFile(DeleteFileRequest) returns DeleteFileResponse;
 }
 
+// Left for future PR
+enum ExitCode {
+
+}
 
 message HermesFile {
   string name = 1; // REQUIRED field
@@ -35,7 +39,7 @@ message PutFileRequest {
 
 // returns the exit code after the rpc GetFile
 message PutFileResponse {
-  enum exit_code = 1; //REQUIRED field
+  ExitCode exit_code = 1; //REQUIRED field
 }
 
 // HermesFile (name and target, contents optional) need to be specified so that Hermes knows what file to retrieve and from which storage system to retrieve it from
@@ -45,7 +49,7 @@ message GetFileRequest {
 
 // returns the exit code after the rpc GetFile if GetFile suceeded we return the file (name and contents required) and if GetFile fails we do not
 message GetFileResponse {
-  enum exit_code = 1; // REQUIRED field
+  ExitCode exit_code = 1; // REQUIRED field
   HermesFile file = 2; // OPTIONAL field
 }
 
@@ -56,5 +60,5 @@ message DeleteFileRequest {
 
 // returns the exit code after the rpc DeleteFile
 message DeleteFileResponse {
-  enum exit_code = 1; // REQUIRED field
+  ExitCode exit_code = 1; // REQUIRED field
 }
