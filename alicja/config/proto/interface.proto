@@ -1,4 +1,4 @@
-//This proto defines the Hermes - Cloud Prober interface config
+// This proto defines the Hermes - Cloud Prober interface config
 
 syntax = "proto3";
 
@@ -9,13 +9,13 @@ option go_package = "github.com/googleinterns/step224-2020/config/proto"
 import "github.com/googleinterns/step224-2020/config/proto/targets.proto";
 
 service Hermes_Ceph {
-  //Create and upload a file to the storage system
+  // Create and upload a file to the storage system
   rpc PutFile(PutFileRequest) returns PutFileResponse;
   
-  //Retrieve a file from the storage system
+  // Retrieve a file from the storage system
   rpc GetFile(GetFileRequest) returns GetFileResponse;
   
-  //Delete a file from the storage system
+  // Delete a file from the storage system
   rpc DeleteFile(DeleteFileRequest) returns DeleteFileResponse;
 }
 
