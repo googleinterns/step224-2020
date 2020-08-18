@@ -2,7 +2,7 @@
   This proto defines the config for a Target. 
   Targets are used by Hermes and Cloudprober to identify storage systems to monitor.
 */
-syntax = "proto2";
+syntax = "proto3";
 
 package hermes;
 
@@ -20,17 +20,17 @@ message TargetsDef {
      HTTPS = 1;
   }
 
-  required TargetSystem target_system = 1;
-  required ConnectionType connection_type = 2;
+  TargetSystem target_system = 1;
+  ConnectionType connection_type = 2;
   ConnectionDetails connection_details = 3;
-  required int64 total_space_allocated = 4; // in MBs.
+  int64 total_space_allocated = 4; // in MBs.
 }
 
 // Necessary when connecting to an API (e.g. Ceph).
 // Unclear yet if we need this for GCS, as we will use the Go client library and service account credentials.
 message ConnectionDetails {
-  required string target_url = 1;
-  int port = 2; // Required for Ceph, but not for GCS since we will use the GCS go client library.
+  string target_url = 1;
+  int32 port = 2; // Required for Ceph, but not for GCS since we will use the GCS go client library.
   
   // API key for the Ceph S3 API (if using Ceph) - irrelevant for GCS.
   // API key can be gotten from your Ceph radosgw instance.

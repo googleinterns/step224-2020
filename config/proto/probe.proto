@@ -13,8 +13,8 @@ option go_package = "github.com/googleinterns/step224-2020/config/proto";
   // This defines the top-level probe interface for Hermes probes.
   // All Hermes probes should extend this probe config.
 message HermesProbeDef {
-  required string probe_name= 1;
-  required targets.TargetsDef targets = 2;
+  string probe_name= 1;
+  targets.TargetsDef targets = 2;
 
   enum TargetSystem {
     GCS = 1;
@@ -31,17 +31,17 @@ message HermesProbeDef {
   TargetSystem target_system = 3;
   ProbeType probe_type = 4;
 
-  optional int32 interval_sec = 5 [default = 3600]; // Probing interval in seconds
+  int32 interval_sec = 5 [default = 3600]; // Probing interval in seconds
 
   // Probes will not retry, they will fail if they timeout.
-  optional int32 timeout_sec = 6 [default = 60]; // Timeout in seconds
+  int32 timeout_sec = 6 [default = 60]; // Timeout in seconds
 
   // If specified, latency is stored as a distribution
-  optional metrics.Dist probe_latency_distribution = 7; // This measures the latency of Hermes' probes, allowing you to diagnose a network issue or issue with Hermes.
-  optional metrics.Dist api_call_latency_distribution = 8; // This measures the latency of the API calls for the relevant storage system targeted.
+  metrics.Dist probe_latency_distribution = 7; // This measures the latency of Hermes' probes, allowing you to diagnose a network issue or issue with Hermes.
+  metrics.Dist api_call_latency_distribution = 8; // This measures the latency of the API calls for the relevant storage system targeted.
 
   // Valid values: "ns", "us" (or "µs"), "ms", "s", "m", "h".
-  optional string latency_unit = 9 [default = "us"];
+  string latency_unit = 9 [default = "us"];
 
   // Additional labels for the probe latency and API call latency distribution metrics.
   // Add as key-value pairs
@@ -52,6 +52,6 @@ message HermesProbeDef {
 // Simple Key-Value pair for additional metric labels
 // Uses key, value instead of Map to allow for `repeated` keyword.
 message AdditionalLabel {
-  required string key = 1;
-  required string value = 2;
+  string key = 1;
+  string value = 2;
 }

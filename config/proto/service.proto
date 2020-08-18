@@ -25,7 +25,7 @@ service Hermes {
 }
 // This is used for starting monitoring a new storage system using a Hermes probe.
 message HermesProbeRequest {
-  required HermesProbeDef probe_config = 1;
+  HermesProbeDef probe_config = 1;
 }
 // This is an empty response message for the probe response.
 // An exit status code may be added to probe responses, and included here.
