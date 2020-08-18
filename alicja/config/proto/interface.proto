@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package hermes;
+
+import config/proto/targets.proto;
+
+service Hermes_Ceph {
+  rpc PutFile(PutFileRequest) returns PutFileResponse;
+  rpc GetFile(GetFileRequest) returns GetFileResponse;
+  rpc DeleteFile(DeleteFileRequest) returns DeleteFileResponse;
+}
+
+message HermesFile {
+  required string name = 1;
+  required Target target = 2; 
+}
+
+message PutFileRequest {
+  required HermesFile file = 1;  
+}
+
+message PutFileResponse {
+  required int32 exit_code = 1; 
+}
+
+message GetFileRequest {
+  required HermesFile file = 1;
+}
+
+message GetFileResponse {
+  required int32 exit_code = 1;
+  optional string contents = 2;
+  optional string name = 3;  
+}
+
+message DeleteFileRequest {
+  required HermesFile file = 1;
+
+}
+
+message DeleteFileResponse {
+  required int32 exit_code = 1;
+  optional string name = 2;
+}
