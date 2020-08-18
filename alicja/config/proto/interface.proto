@@ -20,7 +20,7 @@ service Hermes_Ceph {
 
 message HermesFile {
   string name = 1;
-  Target target = 2; 
+  targets.TargetsDef target = 2; 
 }
 
 // HermesFile (file name and target) need to be specified so that hermes knows where and what file to create
