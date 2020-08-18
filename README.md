@@ -2,7 +2,7 @@
 
 **This is not an officially supported Google product.**
 
-Hermes is an awesome project!
+TODO: Add more information on Hermes setup, running Hermes, etc.
 
 ## Source Code Headers
 
