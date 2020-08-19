@@ -1,6 +1,8 @@
 /*
   This proto defines the initial probe interface for Hermes probes.
   It is used in a variety of other files as it is the top-level probe interface.
+  
+  Author: Evan Spendlove (@evanSpendlove)
 */
 syntax = "proto3";
 
@@ -41,8 +43,8 @@ message HermesProbeDef {
   int32 timeout_sec = 6 [default = 60];  // Timeout in seconds
 
   // If specified, latency is stored as a distribution
-  metrics.Dist probe_latency_distribution = 7;  // This measures the latency of Hermes' probes, allowing you to diagnose a network issue or issue with Hermes.
-  metrics.Dist api_call_latency_distribution = 8;  // This measures the latency of the API calls for the relevant storage system targeted.
+  metrics.Dist probe_latency_distribution = 7;  // Measures the latency of Hermes' probes, allowing you to diagnose a network issue or issue with Hermes.
+  metrics.Dist api_call_latency_distribution = 8;  // Measures the latency of the API calls for the relevant storage system targeted.
 
   // Valid values: "ns", "us" (or "µs"), "ms", "s", "m", "h".
   string latency_unit = 9 [default = "us"];

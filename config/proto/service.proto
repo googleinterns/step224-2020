@@ -1,6 +1,8 @@
 /*
   This proto defines the service-level config for Hermes.
   This is also the external service API for Hermes.
+  
+  Author: Evan Spendlove (@evanSpendlove)
 */
 syntax = "proto3";
 
@@ -12,7 +14,7 @@ import "github.com/googleinterns/step224-2020/config/proto/targets.proto";
 option go_package = "github.com/googleinterns/step224-2020/config/proto";
 
 // This defines the (external) service-level config for Hermes.
-// The Hermes service identifies what gRPCs Hermes will support.
+// The Hermes service identifies the gRPCs Hermes supports.
 service Hermes {
 
   // Start monitoring a new storage system.
@@ -42,5 +44,6 @@ message ListMonitoredSystemsRequest {}
 
 // ListMonitoredSystemsResponse message holds the list of targets returned by ListMonitoredStorageSystems()
 message ListMonitoredSystemsResponse {
+  // TODO(#29) Add exit status to probe response.
   repeated TargetsDef target = 1;
 }

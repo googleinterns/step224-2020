@@ -1,6 +1,8 @@
 /*
   The Targets proto defines the config for a Target. 
   Targets are used by Hermes and Cloudprober to identify storage systems to monitor.
+  
+  Author: Evan Spendlove (@evanSpendlove)
 */
 syntax = "proto3";
 
@@ -17,7 +19,7 @@ message TargetsDef {
     GOOGLE_CLOUD_STORAGE = 0;
     CEPH = 1;
   }
-
+  // TODO(#30) Establish connection method for GCS and Ceph using Go libraries.
   enum ConnectionType {
      HTTP = 0;
      HTTPS = 1;
@@ -30,19 +32,17 @@ message TargetsDef {
   int64 total_space_allocated = 4;  // in MBs.
 }
 
-// Necessary when connecting to an API (e.g. Ceph).
-// Required for Ceph.
-// This functionality will be handled in the Go client library for GCS.
+// REQUIRED, when using Ceph as the target system.
+// Comparable functionality is handled in the Go client library for GCS.
 message CephConnectionDetails {
-  int32 port = 1;  // Port for connecting to Ceph API
+  int32 port = 1;  // Port for connecting to Ceph S3 API
   
-  // API key for the Ceph S3 API (if using Ceph) - irrelevant for GCS.
-  // API key can be gotten from your Ceph radosgw instance.
-  // Necessary for interacting with the Ceph S3 API.
+  // REQUIRED for Ceph S3 API
+  // GCS uses service account credentials instead.
   string api_key = 2;
 }
 
-// Allows the user to define multiple targets.
+// Targets allows the user to define multiple targets.
 message Targets {
   repeated TargetDef targets = 1;
 }
