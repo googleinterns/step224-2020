@@ -26,9 +26,9 @@ enum ExitCode {
 }
 
 message HermesFile {
-  string name = 1; // REQUIRED field
-  TargetsDef target = 2; // REQUIRED field for PutFileRequest, GetFileRequest and DeleteFileRequest OPTIONAL field for GetFileResponse  
-  string contents = 3; // REQUIRED field for PutFileRequest OPTIONAL field for GetFileResponse
+  string name = 1;  // REQUIRED field
+  TargetsDef target = 2;  // REQUIRED field for PutFileRequest, GetFileRequest and DeleteFileRequest OPTIONAL field for GetFileResponse  
+  string contents = 3;  // REQUIRED field for PutFileRequest OPTIONAL field for GetFileResponse
 }
 
 // HermesFile (name, contents and target) need to be specified so that Hermes knows what file to create, and which storage system to create it on
@@ -38,7 +38,7 @@ message PutFileRequest {
 
 // returns the exit code after the rpc GetFile
 message PutFileResponse {
-  ExitCode exit_code = 1; //REQUIRED field
+  ExitCode exit_code = 1;  // REQUIRED field
 }
 
 // HermesFile (name and target, contents optional) need to be specified so that Hermes knows what file to retrieve and from which storage system to retrieve it from
@@ -48,16 +48,16 @@ message GetFileRequest {
 
 // returns the exit code after the rpc GetFile if GetFile suceeded we return the file (name and contents required) and if GetFile fails we do not
 message GetFileResponse {
-  ExitCode exit_code = 1; // REQUIRED field
-  HermesFile file = 2; // OPTIONAL field
+  ExitCode exit_code = 1;  // REQUIRED field
+  HermesFile file = 2;  // OPTIONAL field
 }
 
 // HermesFile (name and target, contents optional) need to be specified so that Hermes knows what file to delete and from which storage system to delete it from 
 message DeleteFileRequest {
-  HermesFile file = 1; //REQUIRED field
+  HermesFile file = 1;  // REQUIRED field
 }
 
 // returns the exit code after the rpc DeleteFile
 message DeleteFileResponse {
-  ExitCode exit_code = 1; // REQUIRED field
+  ExitCode exit_code = 1;  // REQUIRED field
 }
