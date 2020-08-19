@@ -10,8 +10,9 @@ import "github.com/googleinterns/step224-2020/config/proto/probe.proto";
 import "github.com/googleinterns/step224-2020/config/proto/targets.proto";
 
 option go_package = "github.com/googleinterns/step224-2020/config/proto";
+
 // This defines the (external) service-level config for Hermes.
-// It identifies what gRPCs Hermes will support.
+// Hermes identifies what gRPCs Hermes will support.
 service Hermes {
 
   // Start monitoring a new storage system.
@@ -33,10 +34,9 @@ message HermesProbeResponse {}
 
 // A target must be specified so that Hermes knows which target to stop monitoring.
 message StopMonitoringSystemRequest {
-  repeated targets.TargetsDef target = 1;
+  repeated TargetsDef target = 1;
 }
-// This is an empty response message for the probe response.
-// An exit status code may be added to probe responses, and included here.
+// TODO(#29) Add exit status for probe responses.
 message StopMonitoringSystemResponse {}
 
 // Empty message for listing monitoring systems as no arguments needed.
@@ -44,5 +44,5 @@ message ListMonitoredSystemsRequest {}
 
 // This message holds the list of targets returned by ListMonitoredStorageSystems()
 message ListMonitoredSystemsResponse {
-  repeated targets.TargetsDef target = 1;
+  repeated TargetsDef target = 1;
 }
