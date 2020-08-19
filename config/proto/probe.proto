@@ -12,7 +12,7 @@ import "github.com/googleinterns/step224-2020/config/proto/targets.proto";
 
 option go_package = "github.com/googleinterns/step224-2020/config/proto";
 
-// This defines the top-level probe interface for Hermes probes.
+// HermesProbeDef defines the top-level probe interface for Hermes probes.
 // All Hermes probes should extend this probe config.
 message HermesProbeDef {
   string probe_name= 1;

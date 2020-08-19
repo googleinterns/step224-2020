@@ -8,7 +8,7 @@ package hermes;
 
 option go_package = "github.com/googleinterns/step224-2020/targets/proto";
 
-// Target contains all of the metadata necessary for Hermes to establish a connection to a storage system.
+// TargetsDef contains all of the metadata necessary for Hermes to establish a connection to a storage system.
 // Every probe request will require one or more targets.
 message TargetsDef {
   enum TargetSystem {
