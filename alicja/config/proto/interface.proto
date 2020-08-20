@@ -20,7 +20,7 @@ service HermesProber {
   rpc DeleteFile(DeleteFileRequest) returns DeleteFileResponse;
 }
 
-// TODO (#31) Complete ExitCode enum in interface.proto
+// TODO (#31): Complete ExitCode enum in interface.proto
 enum ExitCode {
 
 }
