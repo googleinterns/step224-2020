@@ -11,13 +11,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
+//
 // Author: Evan Spendlove (@evanSpendlove)
-
-/*
-  This proto defines the service-level config for Hermes.
-  This is also the external service API for Hermes.
-*/
+//
+//
+//  This proto defines the service-level config for Hermes.
+//  This is also the external service API for Hermes.
 
 syntax = "proto3";
 
