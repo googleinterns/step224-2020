@@ -1,4 +1,4 @@
-// This proto defines the Hermes - Cloud Prober interface config
+// Hermes's interface with Cloudprober
 
 syntax = "proto3";
 
