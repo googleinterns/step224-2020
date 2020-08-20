@@ -4,7 +4,6 @@ import (
 	// "math/rand"
 	"strconv"
 	"crypto/sha1"
-	"encoding/hex"
 )
 type HermesFile struct {
 	name string
@@ -22,8 +21,7 @@ func generate_file_checksum (file HermesFile) string{
 	
 	file_contents := []byte(file.contents)
 	hash := sha1.Sum(file_contents)
-	// checksum  :=hex.EncodeToString(hash) as an alternative
-	checksum := fmt.Sprintf("%s%v","_", hash)
+	checksum := fmt.Sprintf("%s%x","_", hash)
 	return checksum;
 }
 func generate_file (id int) HermesFile {
