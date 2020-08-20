@@ -10,7 +10,12 @@ type HermesFile struct {
 	contents string
 }
 func generate_file_name (file_ID int, file_checksum string) string{
-	var id_string string = strconv.Itoa(file_ID)
+	var id_string string=""
+	if file_ID < 10 {
+		id_string = "0" + strconv.Itoa(file_ID)
+	} else {
+		id_string = strconv.Itoa(file_ID)
+	}
 	var file_name string = "Hermes_"+id_string+file_checksum
 	return file_name 
 }
@@ -32,6 +37,6 @@ func generate_file (id int) HermesFile {
 	return file
 }
 func main(){
-	var f HermesFile = generate_file(20)
+	var f HermesFile = generate_file(3)
 	fmt.Println(f.name)
 }
