@@ -16,6 +16,11 @@
 
 package hermes
 
+import (
+	"context"
+	"sync"
+)
+
 // FileOperation is an int used as part of the FileOperation enum within the intent log of Hermes' StateJournal.
 type FileOperation int
 
@@ -41,4 +46,18 @@ type Intent struct {
 type StateJournal struct {
 	intent    Intent         // intent stores the next intended file operation and the name of the file that the operation is being performed on.
 	filenames map[int]string // filenames is a map of file IDs to filenames.
+}
+
+// Init initialises the map in the StateJournal so that entries can be added to it.
+func (sj *StateJournal) Init() {
+	sj.filenames = make(map[int]string) // initialise filenames to a map
+}
+
+// Hermes is the main Hermes prober that will startup Hermes and initiate monitoring targets.
+type Hermes struct {
+	stateJournal StateJournal // stateJournal stores the state of Hermes as a combination of next operation intent and a filenames map
+	// Need probes map
+	mutex              sync.Mutex
+	grpcStartProbeChan chan string
+	probeCancelFunc    map[string]context.CancelFunc
 }
