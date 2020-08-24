@@ -24,6 +24,8 @@ import (
 	"github.com/golang/glog"
 	"github.com/google/cloudprober"
 	"github.com/google/cloudprober/web"
+	"github.com/googleinterns/step224-2020/cloudprober/myprobe"
+	"github.com/google/cloudprober/probes"
 )
 
 // InitialiseCloudproberFromConfig initialises Cloudprober from the config passed as an argument.
@@ -31,6 +33,11 @@ import (
 // The config passed as a string should be the contents of a Cloudprober config file, not a file path or filename.
 // For most instances, this is likely just "grpc_port=9314" as this is the only required value in the config.
 func InitialiseCloudproberFromConfig(config string) {
+
+	// Must register probe types here first.
+	probes.RegisterProbeType(int(myprobe.E_RedisProbe.Field),
+		func() probes.Probe { return &myprobe.Probe{} })
+
 	err := cloudprober.InitFromConfig(config)
 	if err != nil {
 		glog.Exitf("Error initializing cloudprober. Err: %v", err)

@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	probe := "cmd/myprober.cfg"
+	probe := "cmd/myproberRedis.cfg"
 	probe2 := "cmd/myproberRedis2.cfg"
 	fmt.Println("Probe path")
 
