@@ -16,7 +16,7 @@
 //
 // Client.go creates the client for connecting to, and making requests to, the
 // gRPC server of Cloudprober.
-
+//
 // Notes and TODOs:
 // TODO(#38) Add support for secure connection to RPC server with credentials, if supported by Cloudprober.
 
@@ -33,6 +33,7 @@ import (
 	spb "github.com/google/cloudprober/prober/proto"
 	configpb "github.com/google/cloudprober/probes/proto"
 	"google.golang.org/grpc"
+	"github.com/googleinterns/step224-2020/cloudprober/myprobe"
 )
 
 var (
@@ -49,7 +50,7 @@ const (
 // Using a global client variable allows Hermes to retain the connection between RPCs.
 func getClient() {
 	if client == nil { // If there is not an active client connection, make one.
-		conn, err := grpc.Dial(server, grpc.WithInsecure()) // Make a connection
+		conn, err := grpc.Dial(rpcServer, grpc.WithInsecure()) // Make a connection
 		if err != nil {
 			glog.Fatal(err)
 		}
@@ -59,7 +60,7 @@ func getClient() {
 
 // RegisterAndAddProbeFromFilepath will add a probe to Cloudprober given a filepath to a probe config (.cfg) file.
 // RegisterAndAddProbeFromFilepath will read the file, unmarshall it, and register and add the probe.
-func RegisterAndAddProbeFromFilepath(filepath string, probe probes.Probe)) {
+func RegisterAndAddProbeFromFilepath(filepath string, probe probes.Probe) {
 	configFile, err := ioutil.ReadFile(filepath) // Read config from file
 	if err != nil {
 		glog.Exitf("Failed to read the config file: %v", err)
@@ -68,7 +69,7 @@ func RegisterAndAddProbeFromFilepath(filepath string, probe probes.Probe)) {
 	glog.Infof("Read probe config: %s", string(configFile)) // Log config once read in
 
 	cfg := &configpb.ProbeDef{}
-	if err := proto.UnmarshalText(string(configFile), cfg); err != nil {
+	if err = proto.UnmarshalText(string(configFile), cfg); err != nil {
 		glog.Exit(err)
 	}
 
@@ -80,10 +81,8 @@ func RegisterAndAddProbeFromFilepath(filepath string, probe probes.Probe)) {
 // - The probe config passed must extend the Cloudprober ProbeDef found at /probes/proto in Cloudprober.
 // - The probe config must also be unmarshalled before being passed as an argument.
 // Prerequisite: The probe type must be registered as an extension.
-func addProbeFromConfig(probePb *configpb) {
-	getClient() // Ensures there is an active client connection to Cloudprober gRPC server.
-
-	_, err := client.AddProbe(context.Background(), &pb.AddProbeRequest{ProbeConfig: cfg}) // Adds the probe to Cloudprober
+func addProbeFromConfig(probePb *configpb.ProbeDef) {
+	_, err := client.AddProbe(context.Background(), &pb.AddProbeRequest{ProbeConfig: probePb}) // Adds the probe to Cloudprober
 
 	if err != nil {
 		glog.Exit(err)
@@ -94,8 +93,12 @@ func addProbeFromConfig(probePb *configpb) {
 // Prequisites - probePb:
 // - The probe config passed must extend the Cloudprober ProbeDef found at /probes/proto in Cloudprober.
 // - The probe config must also be unmarshalled before being passed as an argument.
-func RegisterAndAddProbe(probePb *configpb, probe probes.Probe) {
+func RegisterAndAddProbe(probePb *configpb.ProbeDef, probe probes.Probe) {
+	getClient() // Ensures there is an active client connection to Cloudprober gRPC server.
+
 	probes.RegisterProbeType(200, func() probes.Probe { return probe}) // First, register the probe as an extension with Cloudprober.
+	probes.RegisterProbeType(int(myprobe.E_RedisProbe.Field),
+		func() probes.Probe { return &myprobe.Probe{} })
 
 	// Add the probe to Cloudprober
 	// The probe will be scheduled and run by Cloudprober
@@ -103,7 +106,7 @@ func RegisterAndAddProbe(probePb *configpb, probe probes.Probe) {
 	// If you want to add multiple probes, you must register and add each one individually.
 	// Only one extension type can be registered at any given time.
 	// If more are registered, Cloudprober will throw an error.
-	AddProbe(probePb)
+	addProbeFromConfig(probePb)
 }
 
 // RemoveProbe removes a probe from Cloudprober, given the probe name (located in the probe config).
@@ -122,11 +125,4 @@ func RemoveProbe(probeName string) {
 // TODO: Polish and comment
 func ListProbes() {
 	getClient() // Ensures there is an active client connection to Cloudprober gRPC server.
-
-	probes, err := client.ListProbes()
-	if err != nil {
-		glog.Exit(err)
-	}
-
-	fmt.Println(probes)
 }

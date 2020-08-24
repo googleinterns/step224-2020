@@ -12,8 +12,6 @@ import (
 	"github.com/google/cloudprober/probes/options"
 	"github.com/google/cloudprober/targets/endpoint"
 	"github.com/hoisie/redis"
-//	"github.com/google/cloudprober/probes"
-	cmd "github.com/googleinterns/step224-2020/cmd"
 )
 
 // Probe holds aggregate information about all probe runs, per-target.
@@ -89,15 +87,12 @@ func (p *Probe) initProbeMetrics() {
 
 // runProbeForTarget runs probe for a single target.
 func (p *Probe) runProbeForTarget(ctx context.Context, target string) error {
-	// rpcClient := cmd.GetClient()
 
 	path, err := os.Getwd()
 	if err != nil {
 		fmt.Println("err:", err)
 	}
 	fmt.Println(path)  // for example /home/user
-
-	cmd.AddProbe("../cmd/myprober.cfg")
 
 	client := &redis.Client{
 		Addr: target,

@@ -14,11 +14,15 @@
 //
 // Author: Evan Spendlove (@evanSpendlove)
 
-package hermes
+package main
 
 import (
 	"context"
+	"flag"
 	"sync"
+	"strconv"
+
+	cp "github.com/googleinterns/step224-2020/cloudprober"
 )
 
 // FileOperation is an int used as part of the FileOperation enum within the intent log of Hermes' StateJournal.
@@ -60,4 +64,18 @@ type Hermes struct {
 	mutex              sync.Mutex
 	grpcStartProbeChan chan string
 	probeCancelFunc    map[string]context.CancelFunc
+}
+
+var (
+	rpc_port = flag.Int("rpc_port", 9314, "The port that the gRPC server of Cloudprober will run on")
+	cpCfg string = " grpc_port: " + strconv.Itoa(*rpc_port)
+)
+
+func main() {
+	flag.Parse()
+
+	cp.InitialiseCloudproberFromConfig(cpCfg)
+
+	// Wait forever
+	select {}
 }
