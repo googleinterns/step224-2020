@@ -21,11 +21,11 @@ syntax = "proto3";
 
 package hermes;
 
-option go_package = "github.com/googleinterns/step224-2020/targets/proto";
+option go_package = "github.com/googleinterns/step224-2020/config/proto";
 
-// TargetsDef contains all of the metadata necessary for Hermes to establish a connection to a storage system.
+// TargetDefinition contains all of the metadata necessary for Hermes to establish a connection to a storage system.
 // Every probe request will require one or more targets.
-message TargetsDef {
+message TargetDefinition {
   // TargetSystem is expected to be a storage system.
   // It will stay constant until support for new storage systems is added.
   enum TargetSystem {

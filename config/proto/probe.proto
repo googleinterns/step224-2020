@@ -31,7 +31,7 @@ option go_package = "github.com/googleinterns/step224-2020/config/proto";
 // All Hermes probes should extend this probe config.
 message HermesProbeDef {
   string probe_name= 1;
-  TargetsDef targets = 2;
+  Targets targets = 2;
 
   // TargetSystem is expected to be a storage system.
   // It will stay constant until support for new storage systems is added.
