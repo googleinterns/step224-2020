@@ -14,7 +14,7 @@
 //
 // Author: Evan Spendlove (@evanSpendlove)
 //
-// This proto defines the initial probe interface for Hermes probes.
+// This proto defines the probe interface for Hermes probes.
 // It is used in a variety of other files as it is the top-level probe interface.
 
 syntax = "proto3";
@@ -43,7 +43,7 @@ message HermesProbeDef {
 
   // Probe types currently supported
   enum ProbeType {
-    PROBE_TYPE_UNSPECIFIED = 0; // For unspecified probe types
+    PROBE_TYPE_UNSPECIFIED = 0;  // For unspecified probe types
     GET = 1;  // GET probe is for getting an object (file) from a storage system.
     PUT = 2;  // PUT probe is for putting an object (file) into a storage system.
     DELETE = 3;  // DELETE probe is for deleting an object (file) from a storage system.
@@ -52,9 +52,11 @@ message HermesProbeDef {
   TargetSystem target_system = 3;
   ProbeType probe_type = 4;
 
+  // Default = 3600
   int32 interval_sec = 5; // Probing interval in seconds
 
   // Probes will not retry, they will fail if they timeout.
+  // Default = 60
   int32 timeout_sec = 6;  // Timeout in seconds
 
   // If specified, latency is stored as a distribution
@@ -62,6 +64,7 @@ message HermesProbeDef {
   cloudprober.metrics.Dist api_call_latency_distribution = 8;  // Measures the latency of the API calls for the relevant storage system targeted.
 
   // Valid values: "ns", "us" (or "µs"), "ms", "s", "m", "h".
+  // Default: "us"
   string latency_unit = 9;
 
   // Additional labels for the probe latency and API call latency distribution metrics.
