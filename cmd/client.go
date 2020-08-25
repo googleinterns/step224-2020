@@ -24,14 +24,11 @@ package cmd
 
 import (
 	"context"
-	"io/ioutil"
 
 	"github.com/golang/glog"
-	"github.com/golang/protobuf/proto"
 	proberPb "github.com/google/cloudprober/prober/proto"
 	"github.com/google/cloudprober/probes"
 	configPb "github.com/google/cloudprober/probes/proto"
-	"github.com/googleinterns/step224-2020/cloudprober/myprobe"
 	"google.golang.org/grpc"
 )
 
@@ -57,26 +54,6 @@ func getClient() {
 	}
 }
 
-// RegisterAndAddProbeFromFilepath will add a probe to Cloudprober given a filepath to a probe config (.cfg) file.
-// RegisterAndAddProbeFromFilepath will read the file, unmarshall it, and register and add the probe.
-func RegisterAndAddProbeFromFilepath(filepath string, probe probes.Probe) {
-	configFile, err := ioutil.ReadFile(filepath) // Read config from file
-	if err != nil {
-		glog.Exitf("Failed to read the config file: %v", err)
-	}
-
-	glog.Infof("Read probe config: %s", string(configFile)) // Log config once read in
-
-	cfg := &configPb.ProbeDef{}
-	if err = proto.UnmarshalText(string(configFile), cfg); err != nil {
-		glog.Exit(err)
-	}
-
-	RegisterAndAddProbe(cfg, probe)
-}
-
-// addProbeFromConfig adds a probe to Cloudprober. The probe will then be scheduled and run.
-// Prequisites - probePb:
 // - The probe config passed must extend the Cloudprober ProbeDef found at /probes/proto in Cloudprober.
 // - The probe config must also be unmarshalled before being passed as an argument.
 // Prerequisite: The probe type must be registered as an extension.
@@ -120,6 +97,12 @@ func RemoveProbe(probeName string) {
 }
 
 // TODO: Polish and comment
-func ListProbes() {
+func ListProbes() *proberPb.ListProbesResponse {
 	getClient() // Ensures there is an active client connection to Cloudprober gRPC server.
+
+	response, err := client.ListProbes(context.Background(), &proberPb.ListProbesRequest{})
+	if err != nil {
+		glog.Errorf("error while list probes: %v", err)
+	}
+	return response
 }
