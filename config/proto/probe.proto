@@ -11,13 +11,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
+//
 // Author: Evan Spendlove (@evanSpendlove)
+//
+// This proto defines the initial probe interface for Hermes probes.
+// It is used in a variety of other files as it is the top-level probe interface.
 
-/*
-  This proto defines the initial probe interface for Hermes probes.
-  It is used in a variety of other files as it is the top-level probe interface.
-*/
 syntax = "proto3";
 
 package hermes;
@@ -37,31 +36,33 @@ message HermesProbeDef {
   // TargetSystem is expected to be a storage system.
   // It will stay constant until support for new storage systems is added.
   enum TargetSystem {
+    TARGET_SYSTEM_UNSPECIFIED = 0;
     GCS = 1;
     CEPH = 2;
   }
 
   // Probe types currently supported
   enum ProbeType {
+    PROBE_TYPE_UNSPECIFIED = 0; // For unspecified probe types
     GET = 1;  // GET probe is for getting an object (file) from a storage system.
-    PUT = 2;  // PUT probe is for putting an object (file) into a storage system.  
+    PUT = 2;  // PUT probe is for putting an object (file) into a storage system.
     DELETE = 3;  // DELETE probe is for deleting an object (file) from a storage system.
   }
 
   TargetSystem target_system = 3;
   ProbeType probe_type = 4;
 
-  int32 interval_sec = 5 [default = 3600];  // Probing interval in seconds
+  int32 interval_sec = 5; // Probing interval in seconds
 
   // Probes will not retry, they will fail if they timeout.
-  int32 timeout_sec = 6 [default = 60];  // Timeout in seconds
+  int32 timeout_sec = 6;  // Timeout in seconds
 
   // If specified, latency is stored as a distribution
-  metrics.Dist probe_latency_distribution = 7;  // Measures the latency of Hermes' probes, allowing you to diagnose a network issue or issue with Hermes.
-  metrics.Dist api_call_latency_distribution = 8;  // Measures the latency of the API calls for the relevant storage system targeted.
+  cloudprober.metrics.Dist probe_latency_distribution = 7;  // Measures the latency of Hermes' probes, allowing you to diagnose a network issue or issue with Hermes.
+  cloudprober.metrics.Dist api_call_latency_distribution = 8;  // Measures the latency of the API calls for the relevant storage system targeted.
 
   // Valid values: "ns", "us" (or "µs"), "ms", "s", "m", "h".
-  string latency_unit = 9 [default = "us"];
+  string latency_unit = 9;
 
   // Additional labels for the probe latency and API call latency distribution metrics.
   // Add as key-value pairs
