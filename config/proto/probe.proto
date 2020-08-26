@@ -52,20 +52,17 @@ message HermesProbeDef {
   TargetSystem target_system = 3;
   ProbeType probe_type = 4;
 
-  // Default = 3600
-  int32 interval_sec = 5; // Probing interval in seconds
+  int32 interval_sec = 5;  // Probing interval in seconds, default = 3600
 
   // Probes will not retry, they will fail if they timeout.
-  // Default = 60
-  int32 timeout_sec = 6;  // Timeout in seconds
+  int32 timeout_sec = 6;  // Timeout in seconds, default = 60
 
   // If specified, latency is stored as a distribution
   cloudprober.metrics.Dist probe_latency_distribution = 7;  // Measures the latency of Hermes' probes, allowing you to diagnose a network issue or issue with Hermes.
   cloudprober.metrics.Dist api_call_latency_distribution = 8;  // Measures the latency of the API calls for the relevant storage system targeted.
 
   // Valid values: "ns", "us" (or "µs"), "ms", "s", "m", "h".
-  // Default: "us"
-  string latency_unit = 9;
+  string latency_unit = 9;  // default is "us"
 
   // Additional labels for the probe latency and API call latency distribution metrics.
   // Add as key-value pairs
