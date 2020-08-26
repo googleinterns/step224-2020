@@ -14,8 +14,8 @@
 //
 // Author: Evan Spendlove (@evanSpendlove)
 //
-// The Targets proto defines the config for a Target.
-// Targets are used by Hermes and Cloudprober to identify storage systems to monitor.
+//  The Targets proto defines the config for a Target.
+//  Targets are used by Hermes and Cloudprober to identify storage systems to monitor.
 
 syntax = "proto3";
 
