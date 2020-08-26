@@ -23,23 +23,24 @@ option go_package = "github.com/googleinterns/step224-2020/config/proto";
 // HermesProber provides methods (PutFile, GetFile, DeleteFile) to communicate instructions to Cloudprober regarding file operations 
 service HermesProber {
   // Create and upload a file to the storage system
-  rpc PutFile(PutFileRequest) returns ( PutFileResponse );
+
+  rpc PutFile(PutFileRequest) returns (PutFileResponse);
   
   // Retrieve a file from the storage system
-  rpc GetFile(GetFileRequest) returns ( GetFileResponse );
+  rpc GetFile(GetFileRequest) returns (GetFileResponse);
   
   // Delete a file from the storage system
-  rpc DeleteFile(DeleteFileRequest) returns ( DeleteFileResponse );
+  rpc DeleteFile(DeleteFileRequest) returns (DeleteFileResponse);
 }
 
 // TODO (#31): Complete ExitCode enum in interface.proto
 enum ExitCode {
-
+  SUCCESS = 0;
 }
 
 message HermesFile {
   string name = 1;  // REQUIRED field
-  TargetsDef target = 2;  // REQUIRED field for PutFileRequest, GetFileRequest and DeleteFileRequest OPTIONAL field for GetFileResponse  
+  TargetDefinition target = 2;  // REQUIRED field for PutFileRequest, GetFileRequest and DeleteFileRequest OPTIONAL field for GetFileResponse 
   string contents = 3;  // REQUIRED field for PutFileRequest OPTIONAL field for GetFileResponse
 }
 
