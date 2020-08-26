@@ -21,11 +21,11 @@ syntax = "proto3";
 
 package hermes;
 
-option go_package = "github.com/googleinterns/step224-2020/targets/proto";
+option go_package = "github.com/googleinterns/step224-2020/config/proto";
 
-// TargetsDef contains all of the metadata necessary for Hermes to establish a connection to a storage system.
+// TargetDefinition contains all of the metadata necessary for Hermes to establish a connection to a storage system.
 // Every probe request will require one or more targets.
-message TargetsDef {
+message TargetDefinition {
   // TargetSystem is expected to be a storage system.
   // It will stay constant until support for new storage systems is added.
   enum TargetSystem {
@@ -47,9 +47,11 @@ message TargetsDef {
 
 // REQUIRED, when using Ceph as the target system.
 // Comparable functionality is handled in the Go client library for GCS.
-message CephConnectionDetails {
-  int32 port = 1;  // Port for connecting to Ceph S3 API
-  
+message ConnectionDetails {
+  // REQUIRED for Ceph S3 API
+  // Port for connecting to Ceph S3 API
+  int32 port = 1;
+
   // REQUIRED for Ceph S3 API
   // GCS uses service account credentials instead.
   string api_key = 2;
@@ -57,5 +59,5 @@ message CephConnectionDetails {
 
 // Targets allows the user to define multiple targets.
 message Targets {
-  repeated TargetDef targets = 1;
+  repeated TargetDefinition targets = 1;
 }
