@@ -60,10 +60,6 @@ func (sj *StateJournal) Init() {
 // Hermes is the main Hermes prober that will startup Hermes and initiate monitoring targets.
 type Hermes struct {
 	stateJournal StateJournal // stateJournal stores the state of Hermes as a combination of next operation intent and a filenames map
-	// Need probes map
-	mutex              sync.Mutex
-	grpcStartProbeChan chan string
-	probeCancelFunc    map[string]context.CancelFunc
 }
 
 var (
