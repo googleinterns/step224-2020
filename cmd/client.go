@@ -25,6 +25,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"github.com/golang/protobuf/proto"
 
 	"github.com/golang/glog"
 	proberPb "github.com/google/cloudprober/prober/proto"
@@ -75,8 +76,10 @@ func addProbeFromConfig(probePb *configPb.ProbeDef) {
 // - The probe config must also be unmarshalled before being passed as an argument.
 func RegisterAndAddProbe(extensionNumber int, probePb *configPb.ProbeDef, probe probes.Probe) {
 	getClient() // Ensures there is an active client connection to Cloudprober gRPC server.
-	fmt.Println("Probe extension number: ", extensionNumber, ", Probe: ", probePb)
 	probes.RegisterProbeType(extensionNumber, func() probes.Probe { return probe }) // First, register the probe as an extension with Cloudprober.
+
+	fmt.Println("Probe: ", *probePb)
+	fmt.Println("Probe extension: ", proto.RegisteredExtensions(probePb)[200])
 
 	// Add the probe to Cloudprober
 	// The probe will be scheduled and run by Cloudprober

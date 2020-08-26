@@ -24,8 +24,8 @@ import (
 	"github.com/golang/glog"
 	"github.com/google/cloudprober"
 	"github.com/google/cloudprober/web"
-	"github.com/googleinterns/step224-2020/cloudprober/myprobe"
-	"github.com/google/cloudprober/probes"
+	// "github.com/googleinterns/step224-2020/cloudprober/myprobe"
+	// "github.com/google/cloudprober/probes"
 )
 
 // InitialiseCloudproberFromConfig initialises Cloudprober from the config passed as an argument.
@@ -35,8 +35,10 @@ import (
 func InitialiseCloudproberFromConfig(config string) {
 
 	// Must register probe types here first.
+	/*
 	probes.RegisterProbeType(int(myprobe.E_RedisProbe.Field),
 		func() probes.Probe { return &myprobe.Probe{} })
+	*/
 
 	err := cloudprober.InitFromConfig(config)
 	if err != nil {
