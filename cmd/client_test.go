@@ -20,76 +20,55 @@
 package cmd
 
 import (
-	"context"
 	"os"
 	"testing"
 
 	cp "github.com/googleinterns/step224-2020/cloudprober"
 	"github.com/golang/protobuf/proto"
-	"github.com/google/cloudprober/metrics"
-	"github.com/google/cloudprober/probes/options"
 	probes_configpb "github.com/google/cloudprober/probes/proto"
-	testdatapb "github.com/google/cloudprober/probes/testdata"
 	targetspb "github.com/google/cloudprober/targets/proto"
+	"github.com/google/cloudprober/examples/extensions/myprober/myprobe"
 )
 
 var (
 	cpCfg string = "grpc_port:9314"
 )
 
-// testProbe implements the probes.Probe interface, while providing
-// facilities to examine the probe status for the purpose of testing.
-type testProbe struct {
-	intialized      bool
-	runningStatusCh chan bool
-}
-
-func (p *testProbe) Init(name string, opts *options.Options) error {
-	p.intialized = true
-	p.runningStatusCh = make(chan bool)
-	return nil
-}
-
-func (p *testProbe) Start(ctx context.Context, dataChan chan *metrics.EventMetrics) {
-	p.runningStatusCh <- true
-
-	// If context is done (used to stop a running probe before removing it),
-	// change probe state to not-running.
-	<-ctx.Done()
-	p.runningStatusCh <- false
-	close(p.runningStatusCh)
-}
-
+//setupHermes initialises an instance of Cloudprober so that RPCs can be sent to it.
 func setupHermes() {
 	cp.InitialiseCloudproberFromConfig(cpCfg)
 }
 
+// TestMain is used to setup Cloudprober before tests are run.
+// This is necessary for there to be a gRPC server to make RPCs to.
 func TestMain(m *testing.M) {
 	setupHermes()
 	code := m.Run()
 	os.Exit(code)
 }
 
-// generateExtensionProbeDef generates an inline probe definition of the FancyProbe probe extension.
-// The FancyProbe extension is supplied as testdata in Cloudprober.
-func generateExtensionProbeDef(name string) *probes_configpb.ProbeDef {
-	probeDef := &probes_configpb.ProbeDef{
-		Name: proto.String(name),
-		Type: probes_configpb.ProbeDef_EXTENSION.Enum(),
-		Targets: &targetspb.TargetsDef{
-			Type: &targetspb.TargetsDef_DummyTargets{},
-		},
-	}
+// generationRedisProbeDef generates an inline probe definition of the RedisProbe probe extension.
+// The RedisProbe extension is supplied as an example extension in Cloudprober.
+func generateRedisProbeDef(name string) *probes_configpb.ProbeDef{
+        probeDef := &probes_configpb.ProbeDef{ // Create probe def
+                Name: proto.String(name),
+                Type: probes_configpb.ProbeDef_EXTENSION.Enum(),
+                Targets: &targetspb.TargetsDef{
+                        Type: &targetspb.TargetsDef_DummyTargets{},
+                },
+        }
 
-	proto.SetExtension(probeDef, testdatapb.E_FancyProbe, &testdatapb.FancyProbe{Name: proto.String("fancy")})
-	return probeDef
+	// Add RedisProbe extension to probeDef
+        op := myprobe.ProbeConf_Op.Enum(myprobe.ProbeConf_SET)
+        proto.SetExtension(probeDef, myprobe.E_RedisProbe, &myprobe.ProbeConf{Op: op, Key: proto.String("testkey"), Value: proto.String("testval")})
+        return probeDef
 }
 
 // TestRegisterAndAddProbe tests that an extension probe type can be registered and added to Cloudprober without error.
 func TestRegisterAndAddProbe(t *testing.T) {
 	// Create a probe and then register and add it to the prober
 	probeName1 := "testExtension1"
-	RegisterAndAddProbe(int(testdatapb.E_FancyProbe.Field), generateExtensionProbeDef(probeName1), &testProbe{})
+	RegisterAndAddProbe(int(myprobe.E_RedisProbe.Field), generateRedisProbeDef(probeName1), &myprobe.Probe{})
 
 	// Check if the probe was added correctly
 	resp := ListProbes()
@@ -103,7 +82,7 @@ func TestRegisterAndAddProbe(t *testing.T) {
 
 	// Try adding a second probe to see if the registration is still in place
 	probeName2 := "testExtension2"
-	RegisterAndAddProbe(int(testdatapb.E_FancyProbe.Field), generateExtensionProbeDef(probeName2), &testProbe{})
+	RegisterAndAddProbe(int(myprobe.E_RedisProbe.Field), generateRedisProbeDef(probeName2), &myprobe.Probe{})
 
 	resp = ListProbes()
 	respProbes = resp.GetProbe()
@@ -119,7 +98,7 @@ func TestRegisterAndAddProbe(t *testing.T) {
 func TestRemoveProbe(t *testing.T) {
 	// Create a probe and then register and add it to the prober
         probeName1 := "testExtension1"
-        RegisterAndAddProbe(int(testdatapb.E_FancyProbe.Field), generateExtensionProbeDef(probeName1), &testProbe{})
+	RegisterAndAddProbe(int(myprobe.E_RedisProbe.Field), generateRedisProbeDef(probeName1), &myprobe.Probe{})
 
 	// Remove probe
 	RemoveProbe(probeName1)
@@ -137,7 +116,7 @@ func TestRemoveProbe(t *testing.T) {
 func TestListProbes(t *testing.T) {
 	// Create a probe and then register and add it to the prober
 	probeName1 := "testExtension1"
-	RegisterAndAddProbe(int(testdatapb.E_FancyProbe.Field), generateExtensionProbeDef(probeName1), &testProbe{})
+	RegisterAndAddProbe(int(myprobe.E_RedisProbe.Field), generateRedisProbeDef(probeName1), &myprobe.Probe{})
 
 	// Check if the probe was added correctly
 	resp := ListProbes()
