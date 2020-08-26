@@ -27,7 +27,6 @@ package proto
 
 import (
 	proto "github.com/golang/protobuf/proto"
-	proto1 "github.com/googleinterns/step224-2020/targets/proto"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -138,7 +137,7 @@ type StopMonitoringSystemRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Targets *proto1.Targets `protobuf:"bytes,1,opt,name=targets,proto3" json:"targets,omitempty"`
+	Targets *Targets `protobuf:"bytes,1,opt,name=targets,proto3" json:"targets,omitempty"`
 }
 
 func (x *StopMonitoringSystemRequest) Reset() {
@@ -173,7 +172,7 @@ func (*StopMonitoringSystemRequest) Descriptor() ([]byte, []int) {
 	return file_github_com_googleinterns_step224_2020_config_proto_service_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *StopMonitoringSystemRequest) GetTargets() *proto1.Targets {
+func (x *StopMonitoringSystemRequest) GetTargets() *Targets {
 	if x != nil {
 		return x.Targets
 	}
@@ -264,7 +263,7 @@ type ListMonitoredSystemsResponse struct {
 	unknownFields protoimpl.UnknownFields
 
 	// TODO(#29) Add exit status to probe response.
-	Targets *proto1.Targets `protobuf:"bytes,1,opt,name=targets,proto3" json:"targets,omitempty"`
+	Targets *Targets `protobuf:"bytes,1,opt,name=targets,proto3" json:"targets,omitempty"`
 }
 
 func (x *ListMonitoredSystemsResponse) Reset() {
@@ -299,7 +298,7 @@ func (*ListMonitoredSystemsResponse) Descriptor() ([]byte, []int) {
 	return file_github_com_googleinterns_step224_2020_config_proto_service_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *ListMonitoredSystemsResponse) GetTargets() *proto1.Targets {
+func (x *ListMonitoredSystemsResponse) GetTargets() *Targets {
 	if x != nil {
 		return x.Targets
 	}
@@ -389,7 +388,7 @@ var file_github_com_googleinterns_step224_2020_config_proto_service_proto_goType
 	(*ListMonitoredSystemsRequest)(nil),  // 4: hermes.ListMonitoredSystemsRequest
 	(*ListMonitoredSystemsResponse)(nil), // 5: hermes.ListMonitoredSystemsResponse
 	(*HermesProbeDef)(nil),               // 6: hermes.HermesProbeDef
-	(*proto1.Targets)(nil),               // 7: hermes.Targets
+	(*Targets)(nil),                      // 7: hermes.Targets
 }
 var file_github_com_googleinterns_step224_2020_config_proto_service_proto_depIdxs = []int32{
 	6, // 0: hermes.HermesProbeRequest.probe_config:type_name -> hermes.HermesProbeDef
@@ -414,6 +413,7 @@ func file_github_com_googleinterns_step224_2020_config_proto_service_proto_init(
 		return
 	}
 	file_github_com_googleinterns_step224_2020_config_proto_probe_proto_init()
+	file_github_com_googleinterns_step224_2020_config_proto_targets_proto_init()
 	if !protoimpl.UnsafeEnabled {
 		file_github_com_googleinterns_step224_2020_config_proto_service_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*HermesProbeRequest); i {

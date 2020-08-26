@@ -27,9 +27,8 @@ package proto
 
 import (
 	proto "github.com/golang/protobuf/proto"
-	proto2 "github.com/google/cloudprober/metrics/proto"
-	proto3 "github.com/google/cloudprober/probes/proto"
-	proto1 "github.com/googleinterns/step224-2020/targets/proto"
+	proto1 "github.com/google/cloudprober/metrics/proto"
+	proto2 "github.com/google/cloudprober/probes/proto"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -159,7 +158,7 @@ type HermesProbeDef struct {
 	unknownFields protoimpl.UnknownFields
 
 	ProbeName    string                      `protobuf:"bytes,1,opt,name=probe_name,json=probeName,proto3" json:"probe_name,omitempty"`
-	Targets      *proto1.Targets             `protobuf:"bytes,2,opt,name=targets,proto3" json:"targets,omitempty"`
+	Targets      *Targets                    `protobuf:"bytes,2,opt,name=targets,proto3" json:"targets,omitempty"`
 	TargetSystem HermesProbeDef_TargetSystem `protobuf:"varint,3,opt,name=target_system,json=targetSystem,proto3,enum=hermes.HermesProbeDef_TargetSystem" json:"target_system,omitempty"`
 	ProbeType    HermesProbeDef_ProbeType    `protobuf:"varint,4,opt,name=probe_type,json=probeType,proto3,enum=hermes.HermesProbeDef_ProbeType" json:"probe_type,omitempty"`
 	// Default = 3600
@@ -168,15 +167,15 @@ type HermesProbeDef struct {
 	// Default = 60
 	TimeoutSec int32 `protobuf:"varint,6,opt,name=timeout_sec,json=timeoutSec,proto3" json:"timeout_sec,omitempty"` // Timeout in seconds
 	// If specified, latency is stored as a distribution
-	ProbeLatencyDistribution   *proto2.Dist `protobuf:"bytes,7,opt,name=probe_latency_distribution,json=probeLatencyDistribution,proto3" json:"probe_latency_distribution,omitempty"`         // Measures the latency of Hermes' probes, allowing you to diagnose a network issue or issue with Hermes.
-	ApiCallLatencyDistribution *proto2.Dist `protobuf:"bytes,8,opt,name=api_call_latency_distribution,json=apiCallLatencyDistribution,proto3" json:"api_call_latency_distribution,omitempty"` // Measures the latency of the API calls for the relevant storage system targeted.
+	ProbeLatencyDistribution   *proto1.Dist `protobuf:"bytes,7,opt,name=probe_latency_distribution,json=probeLatencyDistribution,proto3" json:"probe_latency_distribution,omitempty"`         // Measures the latency of Hermes' probes, allowing you to diagnose a network issue or issue with Hermes.
+	ApiCallLatencyDistribution *proto1.Dist `protobuf:"bytes,8,opt,name=api_call_latency_distribution,json=apiCallLatencyDistribution,proto3" json:"api_call_latency_distribution,omitempty"` // Measures the latency of the API calls for the relevant storage system targeted.
 	// Valid values: "ns", "us" (or "µs"), "ms", "s", "m", "h".
 	// Default: "us"
 	LatencyUnit string `protobuf:"bytes,9,opt,name=latency_unit,json=latencyUnit,proto3" json:"latency_unit,omitempty"`
 	// Additional labels for the probe latency and API call latency distribution metrics.
 	// Add as key-value pairs
-	ProbeLatencyAdditionalLabel   []*proto3.AdditionalLabel `protobuf:"bytes,10,rep,name=probe_latency_additional_label,json=probeLatencyAdditionalLabel,proto3" json:"probe_latency_additional_label,omitempty"`
-	ApiCallLatencyAdditionalLabel []*proto3.AdditionalLabel `protobuf:"bytes,11,rep,name=api_call_latency_additional_label,json=apiCallLatencyAdditionalLabel,proto3" json:"api_call_latency_additional_label,omitempty"`
+	ProbeLatencyAdditionalLabel   []*proto2.AdditionalLabel `protobuf:"bytes,10,rep,name=probe_latency_additional_label,json=probeLatencyAdditionalLabel,proto3" json:"probe_latency_additional_label,omitempty"`
+	ApiCallLatencyAdditionalLabel []*proto2.AdditionalLabel `protobuf:"bytes,11,rep,name=api_call_latency_additional_label,json=apiCallLatencyAdditionalLabel,proto3" json:"api_call_latency_additional_label,omitempty"`
 }
 
 func (x *HermesProbeDef) Reset() {
@@ -218,7 +217,7 @@ func (x *HermesProbeDef) GetProbeName() string {
 	return ""
 }
 
-func (x *HermesProbeDef) GetTargets() *proto1.Targets {
+func (x *HermesProbeDef) GetTargets() *Targets {
 	if x != nil {
 		return x.Targets
 	}
@@ -253,14 +252,14 @@ func (x *HermesProbeDef) GetTimeoutSec() int32 {
 	return 0
 }
 
-func (x *HermesProbeDef) GetProbeLatencyDistribution() *proto2.Dist {
+func (x *HermesProbeDef) GetProbeLatencyDistribution() *proto1.Dist {
 	if x != nil {
 		return x.ProbeLatencyDistribution
 	}
 	return nil
 }
 
-func (x *HermesProbeDef) GetApiCallLatencyDistribution() *proto2.Dist {
+func (x *HermesProbeDef) GetApiCallLatencyDistribution() *proto1.Dist {
 	if x != nil {
 		return x.ApiCallLatencyDistribution
 	}
@@ -274,14 +273,14 @@ func (x *HermesProbeDef) GetLatencyUnit() string {
 	return ""
 }
 
-func (x *HermesProbeDef) GetProbeLatencyAdditionalLabel() []*proto3.AdditionalLabel {
+func (x *HermesProbeDef) GetProbeLatencyAdditionalLabel() []*proto2.AdditionalLabel {
 	if x != nil {
 		return x.ProbeLatencyAdditionalLabel
 	}
 	return nil
 }
 
-func (x *HermesProbeDef) GetApiCallLatencyAdditionalLabel() []*proto3.AdditionalLabel {
+func (x *HermesProbeDef) GetApiCallLatencyAdditionalLabel() []*proto2.AdditionalLabel {
 	if x != nil {
 		return x.ApiCallLatencyAdditionalLabel
 	}
@@ -386,9 +385,9 @@ var file_github_com_googleinterns_step224_2020_config_proto_probe_proto_goTypes 
 	(HermesProbeDef_TargetSystem)(0), // 0: hermes.HermesProbeDef.TargetSystem
 	(HermesProbeDef_ProbeType)(0),    // 1: hermes.HermesProbeDef.ProbeType
 	(*HermesProbeDef)(nil),           // 2: hermes.HermesProbeDef
-	(*proto1.Targets)(nil),           // 3: hermes.Targets
-	(*proto2.Dist)(nil),              // 4: cloudprober.metrics.Dist
-	(*proto3.AdditionalLabel)(nil),   // 5: cloudprober.probes.AdditionalLabel
+	(*Targets)(nil),                  // 3: hermes.Targets
+	(*proto1.Dist)(nil),              // 4: cloudprober.metrics.Dist
+	(*proto2.AdditionalLabel)(nil),   // 5: cloudprober.probes.AdditionalLabel
 }
 var file_github_com_googleinterns_step224_2020_config_proto_probe_proto_depIdxs = []int32{
 	3, // 0: hermes.HermesProbeDef.targets:type_name -> hermes.Targets
@@ -410,6 +409,7 @@ func file_github_com_googleinterns_step224_2020_config_proto_probe_proto_init() 
 	if File_github_com_googleinterns_step224_2020_config_proto_probe_proto != nil {
 		return
 	}
+	file_github_com_googleinterns_step224_2020_config_proto_targets_proto_init()
 	if !protoimpl.UnsafeEnabled {
 		file_github_com_googleinterns_step224_2020_config_proto_probe_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*HermesProbeDef); i {
