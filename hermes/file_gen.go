@@ -29,7 +29,7 @@ func (file HermesFile) GenerateFileChecksum() string {
 	checksum := fmt.Sprintf("_%x", hash)
 	return checksum;
 }
-func generate_file (id int) HermesFile {
+func GenerateHermesFile (id int) HermesFile {
 	file := HermesFile{}
 	file.GenerateFileContents(id)
 	checksum := file.GenerateFileChecksum()
