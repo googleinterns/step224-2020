@@ -20,7 +20,8 @@ func (file *HermesFile) GenerateFileName(file_ID int, file_checksum string) {
 	file_name := "Hermes_"+id_string+file_checksum
 	file.name = file_name
 }
-func (file *HermesFile) GenerateFileContents(file_ID int) {
+
+func (file *HermesFile) generateFileContents(file_ID int) {
 	file.contents = "jhfvjhdfjhfjjhjhdfvjvcvfjh";
 }
 
