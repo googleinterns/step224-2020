@@ -1,39 +1,38 @@
 package hermes
 
 import(
-	//"fmt"
 	"testing"
-	"math/rand"
 	"strconv"
-	"time"
-	//"crypto/sha1"
 )
 
 
 func TestChecksum(t *testing.T){
-	var global_contents string = "jhfvjhdfjhfjjhjhdfvjvcvfjh"
-	var result_expected string = "_68f3caf439065824dcf75651c202e9f7c28ebf07"
+	global_contents := "jhfvjhdfjhfjjhjhdfvjvcvfjh"
+	want := "_68f3caf439065824dcf75651c202e9f7c28ebf07" //expected checksum result
 	file := HermesFile{}
 	file.contents = global_contents;
-	result := generate_file_checksum(file)
-	if result != result_expected {
-		t.Errorf("generate_file_checksum(\"jhfvjhdfjhfjjhjhdfvjvcvfjh\") failed expected %v got %v", result_expected, result)
+	got := file.GenerateFileChecksum()
+	if want != got {
+		t.Errorf("GenerateFileChecksum() failed expected %v got %v", want, got)
 	}
 }
 
 func TestFileName(t *testing.T){
-	rand.Seed(time.Now().UnixNano())
-	var file_ID int = rand.Intn(40)+10;
-	var fake_checksum string ="_abba"
-	var result_expected string =  "Hermes_"+strconv.Itoa(file_ID)+"_abba"
-	result := generate_file_name(file_ID, fake_checksum)
-	if result != result_expected {
-		t.Errorf("generate_file_name(%v, \"abba\") failed expected %v got %v", file_ID, result_expected, result)
+	file := HermesFile{}
+	file_ID := 23;
+	fake_checksum :="_abba"
+	want :=  "Hermes_"+strconv.Itoa(file_ID)+"_abba" //expected file name result
+	file.GenerateFileName(file_ID, fake_checksum)
+	got := file.name
+	if got != want {
+		t.Errorf("GenerateFileName(%v, \"abba\") failed expected %v got %v", file_ID, want, got)
 	}
-	file_ID = rand.Intn(10);
-	result_expected = "Hermes_0"+strconv.Itoa(file_ID)+"_abba"
-	result = generate_file_name(file_ID, fake_checksum)
-	if result != result_expected {
-		t.Errorf("generate_file_name(%v, \"abba\") failed expected %v got %v", file_ID, result_expected, result)
+	file_ID = 4;
+	want = "Hermes_0"+strconv.Itoa(file_ID)+"_abba" //expected file name result
+	file.GenerateFileName(file_ID, fake_checksum)
+	got = file.name
+	if got != want {
+		t.Errorf("GenerateFileName(%v, \"abba\") failed expected %v got %v", file_ID, want, got)
 	}
 }
+
