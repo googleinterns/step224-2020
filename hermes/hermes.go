@@ -13,17 +13,11 @@
 // limitations under the License.
 //
 // Author: Evan Spendlove (@evanSpendlove)
+//
+// hermes.go defines the structures necessary for the main hermes object to
+// monitor a storage system.
 
-package main
-
-import (
-	"context"
-	"flag"
-	"sync"
-	"strconv"
-
-	cp "github.com/googleinterns/step224-2020/cloudprober"
-)
+package hermes
 
 // FileOperation is an int used as part of the FileOperation enum within the intent log of Hermes' StateJournal.
 type FileOperation int
@@ -31,9 +25,14 @@ type FileOperation int
 // FileOperation enum is used for marking the operation intent within the StateJournal of Hermes.
 // FileOperation has two possible values: CREATE, DELETE.
 const (
-	CREATE FileOperation = iota
-	DELETE
+	Create FileOperation = iota
+	Delete
 )
+
+// String() allows the FileOperation constants to be conveniently converted to a print-friendly format.
+func (fileOperation *FileOperation) String() string{
+	return [...]string{"Create", "Delete"}[fileOperation]
+}
 
 // Intent stores the next intended file operation of Hermes.
 // This is used as part of the StateJournal of Hermes.
@@ -59,18 +58,4 @@ func (sj *StateJournal) Init() {
 // Hermes is the main Hermes prober that will startup Hermes and initiate monitoring targets.
 type Hermes struct {
 	stateJournal StateJournal // stateJournal stores the state of Hermes as a combination of next operation intent and a filenames map
-}
-
-var (
-	rpc_port = flag.Int("rpc_port", 9314, "The port that the gRPC server of Cloudprober will run on")
-	cpCfg string = " grpc_port: " + strconv.Itoa(*rpc_port)
-)
-
-func main() {
-	flag.Parse()
-
-	cp.InitialiseCloudproberFromConfig(cpCfg)
-
-	// Wait forever
-	select {}
 }

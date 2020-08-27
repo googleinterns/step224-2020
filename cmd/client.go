@@ -24,58 +24,89 @@ package cmd
 
 import (
 	"context"
+	"sync"
+	"fmt"
 
-	"github.com/golang/glog"
-	proberPb "github.com/google/cloudprober/prober/proto"
-	"github.com/google/cloudprober/probes"
-	configPb "github.com/google/cloudprober/probes/proto"
+	proberpb "github.com/google/cloudprober/prober/proto"
+	cpprobes "github.com/google/cloudprober/probes"
+	configpb "github.com/google/cloudprober/probes/proto"
 	"google.golang.org/grpc"
 )
 
-var (
-	client proberPb.CloudproberClient // Cloudprober gRPC client retained between RPC calls
-)
+type CloudproberClient struct {
+	conn  *grpc.ClientConn // Client connection for opening and closing the connection
+	client    proberpb.CloudproberClient // Cloudprober gRPC client retained between RPC calls
+	clientMux sync.Mutex                 // Mutex lock for making CloudproberClient safe for concurrent use
+}
 
-const (
-	rpcServer string = "localhost:9314" // If the grpc_port in the Cloudprober config is changed, need to update this too.
-)
-
-// getClient() ensures there is an active client connection to the Cloudprober gRPC server.
+// InitClient() establishes an active client connection to the Cloudprober gRPC server.
+// If there is already an active connection, it will do nothing and return nil.
 // If there is not an active connection, it will make one and assign a Cloudprober client
-// to the global client variable.Using a global client variable allows Hermes to
-// retain the connection between RPCs.
-func getClient() {
-	if client == nil { // If there is not an active client connection, make one.
+// to the CloudproberClient.client field.
+// Parameters:
+// - rpcServer: Pass the rpcServer address and port as a string formatted as: "hostname:port", e.g. "localhost:1234"
+// Returns:
+// - error:
+//	  - nil: No error occurred and the client was successfully initialised.
+//	  - TODO(): Add documentation on GRPC dial() errors.
+func (cpc *CloudproberClient) InitClient(rpcServer string) error {
+	cpc.clientMux.Lock()
+	defer cpc.clientMux.Unlock()
+
+	if cpc.client == nil { // If there is not an active client connection, make one.
 		conn, err := grpc.Dial(rpcServer, grpc.WithInsecure()) // Make a connection
 		if err != nil {
-			glog.Fatal(err)
+			dialErr := fmt.Errorf("GRPC_DIAL_ERROR: %v", err)
+			return dialErr
 		}
-		client = proberPb.NewCloudproberClient(conn) // Create a new Cloudprober gRPC Client
+		cpc.conn = conn
+		cpc.client = proberpb.NewCloudproberClient(conn) // Create a new Cloudprober gRPC Client
 	}
+
+	return nil
+}
+
+// CloseConn() is used for closing the client connection with the gRPC server.
+// Returns:
+// - error:
+//	   - nil: No error occurred and the connection was successfully closed.
+//	   - Code 1, ErrClientConnClosing: This operation is illegal because the client connection is already closing.
+func (cpc *CloudproberClient) CloseConn() error {
+	err := cpc.conn.Close() // Close the connection
+	return err
 }
 
 // addProbeFromConfig() adds a probe to Cloudprober via the gRPC client.
-// Prerequisites - probePb:
-// - The probe config passed must extend the Cloudprober ProbeDef found at /probes/proto in Cloudprober.
-// - The probe config must also be unmarshalled before being passed as an argument.
-// Prerequisite: The probe type must be registered as an extension.
-func addProbeFromConfig(probePb *configPb.ProbeDef) {
-	_, err := client.AddProbe(context.Background(), &proberPb.AddProbeRequest{ProbeConfig: probePb}) // Adds the probe to Cloudprober
+// Parameters:
+// - probePb: - This probe config must be unmarshalled before being passed as an argument.
+//			 - This probe type must be registered as an extension.
+// Returns:
+// - error:
+func (cpc *CloudproberClient) addProbeFromConfig(probePb *configpb.ProbeDef) error {
+	cpc.clientMux.Lock()
+	defer cpc.clientMux.Unlock()
 
-	if err != nil {
-		glog.Error("Probe could not be registered: ", probePb)
-		glog.Exit(err)
-	}
+	_, err := cpc.client.AddProbe(context.Background(), &proberpb.AddProbeRequest{ProbeConfig: probePb}) // Adds the probe to Cloudprober
+	return err
 }
 
 // RegisterAndAddProbe registers a probe type and adds the probe to Cloudprober to be run.
-// Prequisites - probePb:
-// - The probe config passed must extend the Cloudprober ProbeDef found at /probes/proto in Cloudprober.
-// - The probe config must also be unmarshalled before being passed as an argument.
-func RegisterAndAddProbe(extensionNumber int, probePb *configPb.ProbeDef, probe probes.Probe) {
-	getClient() // Ensures there is an active client connection to Cloudprober gRPC server.
+// Parameters:
+// - probePb: - This probe config must be unmarshalled before being passed as an argument.
+// Returns:
+// - error:
+//	   - ClientNotInitialised: the gRPC client of CloudproberClient is not registered.
+//	     -> Solution: Call the InitClient(rpcServer string) method.
+func (cpc *CloudproberClient)  RegisterAndAddProbe(extensionNumber int, probePb *configpb.ProbeDef, hermesProbeToAdd cpprobes.Probe) error {
+	cpc.clientMux.Lock()
+	defer cpc.clientMux.Unlock()
 
-	probes.RegisterProbeType(extensionNumber, func() probes.Probe { return probe }) // First, register the probe as an extension with Cloudprober.
+	if cpc.client == nil{
+		err := fmt.Errorf("ClientNotInitialised: cannot register and add a probe when client is not initialised")
+		return err
+	}
+
+	cpprobes.RegisterProbeType(extensionNumber, func() cpprobes.Probe { return hermesProbeToAdd }) // First, register the probe as an extension with Cloudprober.
 
 	// Add the probe to Cloudprober
 	// The probe will be scheduled and run by Cloudprober
@@ -83,30 +114,49 @@ func RegisterAndAddProbe(extensionNumber int, probePb *configPb.ProbeDef, probe 
 	// If you want to add multiple probes, you must register and add each one individually.
 	// Only one extension type can be registered at any given time.
 	// If more are registered, Cloudprober will throw an error.
-	addProbeFromConfig(probePb)
+	return cpc.addProbeFromConfig(probePb)
 }
 
 // RemoveProbe removes a probe from Cloudprober, given the probe name (located in the probe config).
-func RemoveProbe(probeName string) {
-	getClient() // Ensures there is an active client connection to Cloudprober gRPC server.
+// An error will be returned if there is no active probe with this probe name.
+// Parameters:
+// - probeName: This must be the name of an active probe in Cloudprober.
+// Returns:
+// - error:
+//	   - Code: 3, InvalidArgument: probeName is an empty string
+//	   - Code: 5,  NotFound: cannot find a probe matching this probe name
+//	   - ClientNotInitialised: the gRPC client of CloudproberClient is not registered.
+//	     -> Solution: Call the InitClient(rpcServer string) method.
+func (cpc *CloudproberClient)  RemoveProbe(probeName string) error {
+	cpc.clientMux.Lock()
+	defer cpc.clientMux.Unlock()
 
-	var probeToRemove *string // Need to use a string pointer for RemoveProbeRequest{}
-	probeToRemove = &probeName
-
-	_, err := client.RemoveProbe(context.Background(), &proberPb.RemoveProbeRequest{ProbeName: probeToRemove}) // Remove probe from Cloudprober
-	if err != nil {
-		glog.Exit(err)
+	if cpc.client == nil{
+		err := fmt.Errorf("ClientNotInitialised: cannot register and add a probe when client is not initialised")
+		return err
 	}
+
+	probeToRemove := &probeName // Need to use a string pointer for RemoveProbeRequest{}
+
+	_, err := cpc.client.RemoveProbe(context.Background(), &proberpb.RemoveProbeRequest{ProbeName: probeToRemove}) // Remove probe from Cloudprober
+	return err
 }
 
 // ListProbes() returns a list of active probes from Cloudprober.
-func ListProbes() *proberPb.ListProbesResponse {
-	getClient() // Ensures there is an active client connection to Cloudprober gRPC server.
+// Returns:
+// - ListProbesResponse: This is the list of active probes in Cloudprober.
+//			 If this is empty, there are no active probes.
+// - Error:
+//	   - ClientNotInitialised: the gRPC client of CloudproberClient is not registered.
+//	     -> Solution: Call the InitClient(rpcServer string) method.
+func (cpc *CloudproberClient)  ListProbes() (*proberpb.ListProbesResponse, error) {
+	cpc.clientMux.Lock()
+	defer cpc.clientMux.Unlock()
 
-	response, err := client.ListProbes(context.Background(), &proberPb.ListProbesRequest{}) // Submit ListProbes() rpc.
-	if err != nil {
-		glog.Errorf("error while list probes: %v", err)
+	if cpc.client == nil{
+		err := fmt.Errorf("ClientNotInitialised: cannot register and add a probe when client is not initialised")
+		return nil, err
 	}
 
-	return response
+	return cpc.client.ListProbes(context.Background(), &proberpb.ListProbesRequest{}) // Submit ListProbes() rpc.
 }

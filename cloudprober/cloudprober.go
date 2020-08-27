@@ -28,18 +28,27 @@ import (
 
 // InitialiseCloudproberFromConfig initialises Cloudprober from the config passed as an argument.
 // It then sets up the web UI for Cloudprober, and starts running Cloudprober.
-// The config passed as a string should be the contents of a Cloudprober config file, not a file path or filename.
-// For most instances, this is likely just "grpc_port=9314" as this is the only required value in the config.
-func InitialiseCloudproberFromConfig(config string) error {
+// Parameters:
+// - config: config should be the contents of a Cloudprober config file. This is most likely: "grpc_port=9314"
+//           -> the "grpc_port:" field is the only required field for the config.
+// Returns:
+// - context: 
+// - cancel func():
+// - error: 
+func InitialiseCloudproberFromConfig(config string) (context.Context, func(), error) {
 
 	err := cloudprober.InitFromConfig(config)
 	if err != nil {
 		glog.Errorf("failed to initialise cloudprober, err: %v", err)
-		return err
+		return nil, nil, err
 	}
 
 	// web.Init sets up web UI for cloudprober.
 	web.Init()
 
-	cloudprober.Start(context.Background()) // Start running Cloudprober instance
+	ctx, cancelCloudprober := context.WithCancel(context.Background()) // Create new context with a cancel() function
+
+	cloudprober.Start(ctx) // Start running Cloudprober instance
+
+	return ctx, cancelCloudprober, nil
 }
