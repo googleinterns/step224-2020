@@ -27,5 +27,7 @@ protoc -I=. --go_out=. github.com/googleinterns/step224-2020/config/proto/*.prot
 # Find finds all of the files ending in _test.go and returns their relative
 # paths. Sed removes the the file part of that relative path.
 # Then, we remove uniques.
-go test $(find ./github.com/googleinterns/step224-2020
- -type f -name '*_test.go' | sed -r 's|/[^/]+$||' -u)
+go test $(find ./github.com/googleinterns/step224-2020 -type f -name '*_test.go' | sed -r 's|/[^/]+$||' -u)
+
+# Run go fmt on all .go files to format them
+go fmt github.com/googleinterns/step224-2020/...
