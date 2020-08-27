@@ -23,6 +23,7 @@ func (file *HermesFile) GenerateFileName(file_ID int, file_checksum string) {
 func (file *HermesFile) GenerateFileContents(file_ID int) {
 	file.contents = "jhfvjhdfjhfjjhjhdfvjvcvfjh";
 }
+
 func (file HermesFile) GenerateFileChecksum() string {
 	
 	file_contents := []byte(file.contents)
