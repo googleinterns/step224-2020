@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"crypto/sha1"
 )
+
 type HermesFile struct {
 	name string
 	contents string
