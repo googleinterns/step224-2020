@@ -22,6 +22,7 @@ package cmd
 import (
 	"os"
 	"testing"
+	"github.com/golang/glog"
 
 	cp "github.com/googleinterns/step224-2020/cloudprober"
 	"github.com/golang/protobuf/proto"
@@ -40,7 +41,12 @@ const (
 
 //setupHermes initialises an instance of Cloudprober so that RPCs can be sent to it.
 func setupHermes() func() {
-	ctx, cancel, err := cp.InitialiseCloudproberFromConfig(cpCfg)
+	_, cancel, err := cp.InitialiseCloudproberFromConfig(cpCfg)
+
+	if err != nil {
+		glog.Fatalf("Cloudprober could not be initialised, err: %v", err)
+	}
+
 	return cancel
 }
 
@@ -79,11 +85,15 @@ func TestRegisterAndAddProbe(t *testing.T) {
 	err := cpc.RegisterAndAddProbe(int(myprobe.E_RedisProbe.Field), generateRedisProbeDef(testProbe0), &myprobe.Probe{})
 
 	if err != nil {
-		t.Errorf("Probe not correctly registered and added to Cloudprober, error: ", err)
+		t.Errorf("Probe not correctly registered and added to Cloudprober, error: %v", err)
 	}
 
 	// Check if the probe was added correctly
-	resp := cpc.ListProbes()
+	resp, errResp := cpc.ListProbes()
+	if errResp != nil {
+		t.Errorf("ListProbes() failed, error: %v", errResp)
+	}
+
 	respProbes := resp.GetProbe()
 
 	if respProbes[0].GetName() != testProbe0 {
@@ -91,43 +101,90 @@ func TestRegisterAndAddProbe(t *testing.T) {
 	}
 
 	// Try adding a second probe to see if the registration is still in place
-	cpc.RegisterAndAddProbe(int(myprobe.E_RedisProbe.Field), generateRedisProbeDef(testProbe1), &myprobe.Probe{})
+	err = cpc.RegisterAndAddProbe(int(myprobe.E_RedisProbe.Field), generateRedisProbeDef(testProbe1), &myprobe.Probe{})
 
-	resp = ListProbes()
-	respProbes = resp.GetProbe()
-
-	if respProbes[1].GetName() != testProbe1 {
-		t.Errorf("Expected probe %s to be running, got probe %s running", testProbe1, respProbes[1].GetName())
+	// Check if the probe was added correctly
+	resp, errResp = cpc.ListProbes()
+	if errResp != nil {
+		t.Errorf("ListProbes() failed, error: %v", errResp)
 	}
 
-	RemoveProbe(testProbe0)
-	RemoveProbe(testProbe1)
+	respProbes = resp.GetProbe()
+
+	if respProbes[1].GetName() != testProbe0 {
+		t.Errorf("Expected probe %s to be running, got probe %s running", testProbe0, respProbes[1].GetName())
+	}
+
+	err = cpc.RemoveProbe(testProbe0)
+	if err != nil {
+		t.Errorf("RemoveProbe() failed, error: %v", err)
+	}
+
+	err = cpc.RemoveProbe(testProbe1)
+	if err != nil {
+		t.Errorf("RemoveProbe() failed, error: %v", err)
+	}
+
+	err = cpc.CloseConn()
+	if err != nil {
+		t.Errorf("CloseConn() failed, error: %v", err)
+	}
 }
 
 // TestRemoveProbe tests that the RemoveProbe() method removes a probe from Cloudprober
 func TestRemoveProbe(t *testing.T) {
+	cpc := &CloudproberClient{}
+	cpc.InitClient(rpcServer)
+
 	// Create a probe and then register and add it to the prober
-	RegisterAndAddProbe(int(myprobe.E_RedisProbe.Field), generateRedisProbeDef(testProbe0), &myprobe.Probe{})
+	err := cpc.RegisterAndAddProbe(int(myprobe.E_RedisProbe.Field), generateRedisProbeDef(testProbe0), &myprobe.Probe{})
+	if err != nil {
+		t.Errorf("Probe not correctly registered and added to Cloudprober, error: %v", err)
+	}
 
 	// Remove probe
-	RemoveProbe(testProbe0)
+	err = cpc.RemoveProbe(testProbe0)
+	if err != nil {
+		t.Errorf("RemoveProbe() failed, error: %v", err)
+	}
 
-	// Verify that the probe was removed
-	resp := ListProbes()
+	// Check if the probe was removed correctly
+	resp, errResp := cpc.ListProbes()
+	if errResp != nil {
+		t.Errorf("ListProbes() failed, error: %v", errResp)
+	}
+
 	respProbes := resp.GetProbe()
+
 	if len(respProbes) != 0 {
-		t.Errorf("Expected no probes to be running, got %d probes running", len(respProbes))
-		t.Error("Probes running: ", respProbes)
+		t.Errorf("Expected no probes to be running, got %d probes running; active probes running: %v", len(respProbes), respProbes)
+	}
+
+	// Close connection to gRPC server
+	err = cpc.CloseConn()
+	if err != nil {
+		t.Errorf("CloseConn() failed, error: %v", err)
 	}
 }
 
 // TestListProbes tests that the ListProbes() method returns all active probes in Cloudprober
 func TestListProbes(t *testing.T) {
 	// Create a probe and then register and add it to the prober
-	RegisterAndAddProbe(int(myprobe.E_RedisProbe.Field), generateRedisProbeDef(testProbe0), &myprobe.Probe{})
+	cpc := &CloudproberClient{}
+	cpc.InitClient(rpcServer)
+
+	// Create a probe and then register and add it to the prober
+	err := cpc.RegisterAndAddProbe(int(myprobe.E_RedisProbe.Field), generateRedisProbeDef(testProbe0), &myprobe.Probe{})
+	if err != nil {
+		t.Errorf("Probe not correctly registered and added to Cloudprober, error: %v", err)
+	}
 
 	// Check if the probe was added correctly
-	resp := ListProbes()
+	resp, errResp := cpc.ListProbes()
+	if errResp != nil {
+		t.Errorf("ListProbes() failed, error: %v", errResp)
+	}
+
 	respProbes := resp.GetProbe()
 
 	if respProbes[0].GetName() != testProbe0 {
@@ -135,12 +192,25 @@ func TestListProbes(t *testing.T) {
 	}
 
 	// Remove probe
-	RemoveProbe(testProbe0)
+	err = cpc.RemoveProbe(testProbe0)
+	if err != nil {
+		t.Errorf("RemoveProbe() failed, error: %v", err)
+	}
 
-	// Verify that the probe was removed
-	resp = ListProbes()
+	// Check if the probe was removed correctly
+	resp, errResp = cpc.ListProbes()
+	if errResp != nil {
+		t.Errorf("ListProbes() failed, error: %v", errResp)
+	}
+
 	respProbes = resp.GetProbe()
+
 	if len(respProbes) != 0 {
-		t.Errorf("Expected no probes to be running, got %d probes running, probes running: %v", len(respProbes), respProbes)
+		t.Errorf("Expected no probes to be running, got %d probes running; active probes running: %v", len(respProbes), respProbes)
+	}
+
+	err = cpc.CloseConn()
+	if err != nil {
+		t.Errorf("CloseConn() failed, error: %v", err)
 	}
 }

@@ -29,7 +29,7 @@ import (
 // Cloudprober from a config and that it starts running properly.
 func TestInitialiseCloudproberFromConfig(t *testing.T) {
 	cfg := "grpc_port:9314"
-	err := InitialiseCloudproberFromConfig(cfg) // This initialises Cloudprober and starts it running.
+	_, cancel, err := InitialiseCloudproberFromConfig(cfg) // This initialises Cloudprober and starts it running.
 	if err != nil {
 		t.Errorf("Expected no error for InitialiseCloudproberFromConfig(), got %v", err)
 	}
@@ -38,4 +38,6 @@ func TestInitialiseCloudproberFromConfig(t *testing.T) {
 	if cfg != setConfig {
 		t.Error("Config mismatch")
 	}
+
+	cancel() // Close down Cloudprober instance
 }

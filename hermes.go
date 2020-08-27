@@ -22,6 +22,7 @@ package main
 import (
 	"flag"
 	"strconv"
+	"github.com/golang/glog"
 
 	cp "github.com/googleinterns/step224-2020/cloudprober"
 )
@@ -33,7 +34,7 @@ var (
 func main() {
 	flag.Parse()
 
-	err := cp.InitialiseCloudproberFromConfig("grpc_port: " + strconv.Itoa(*rpc_port))
+	_, cancel, err := cp.InitialiseCloudproberFromConfig("grpc_port: " + strconv.Itoa(*rpc_port))
 
 	if err != nil {
 		glog.Exitf("cloudprober could not be initialised from config: grpc_port: %d, err:%v", *rpc_port, err)
@@ -41,4 +42,6 @@ func main() {
 
 	// Wait forever
 	select {}
+
+	cancel()
 }
