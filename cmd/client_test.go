@@ -133,7 +133,6 @@ func TestListProbes(t *testing.T) {
 	resp = ListProbes()
 	respProbes = resp.GetProbe()
 	if len(respProbes) != 0 {
-		t.Errorf("Expected no probes to be running, got %d probes running", len(respProbes))
-		t.Error("Probes running: ", respProbes)
+		t.Errorf("Expected no probes to be running, got %d probes running, probes running: %v", len(respProbes), respProbes)
 	}
 }

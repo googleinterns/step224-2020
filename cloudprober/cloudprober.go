@@ -30,11 +30,12 @@ import (
 // It then sets up the web UI for Cloudprober, and starts running Cloudprober.
 // The config passed as a string should be the contents of a Cloudprober config file, not a file path or filename.
 // For most instances, this is likely just "grpc_port=9314" as this is the only required value in the config.
-func InitialiseCloudproberFromConfig(config string) {
+func InitialiseCloudproberFromConfig(config string) error {
 
 	err := cloudprober.InitFromConfig(config)
 	if err != nil {
-		glog.Exitf("Error initializing cloudprober. Err: %v", err)
+		glog.Errorf("failed to initialise cloudprober, err: %v", err)
+		return err
 	}
 
 	// web.Init sets up web UI for cloudprober.

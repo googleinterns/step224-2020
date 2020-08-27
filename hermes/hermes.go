@@ -31,7 +31,6 @@ type FileOperation int
 // FileOperation enum is used for marking the operation intent within the StateJournal of Hermes.
 // FileOperation has two possible values: CREATE, DELETE.
 const (
-	_                    = iota
 	CREATE FileOperation = iota
 	DELETE
 )
