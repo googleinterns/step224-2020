@@ -17,8 +17,7 @@ func (file *HermesFile) GenerateFileName(file_ID int, file_checksum string) {
 	} else {
 		id_string = strconv.Itoa(file_ID)
 	}
-	file_name := "Hermes_"+id_string+file_checksum
-	file.name = file_name
+	file.name := "Hermes_"+id_string+file_checksum
 }
 
 func (file *HermesFile) generateFileContents(file_ID int) {
