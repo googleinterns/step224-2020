@@ -23,8 +23,8 @@ cd $HOME/go/src
 
 protoc -I=. --go_out=. github.com/googleinterns/step224-2020/config/proto/*.proto
 
-# Run all go tests
-go test github.com/googleinterns/step224-2020/...
-
 # Run go fmt on all .go files to format them
 go fmt github.com/googleinterns/step224-2020/...
+
+# Run all go tests
+go test github.com/googleinterns/step224-2020/...
