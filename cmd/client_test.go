@@ -53,9 +53,9 @@ func setupHermes(hermes *hermes.Hermes) {
 // TestMain is used to setup Cloudprober before tests are run.
 // This is necessary for there to be a gRPC server to make RPCs to.
 func TestMain(m *testing.M) {
-	hermes := &hermes.Hermes{}
+	test_hermes := &hermes.Hermes{}
 
-	setupHermes(hermes)              // Set up Hermes and initialise Cloudprober
+	setupHermes(test_hermes)              // Set up Hermes and initialise Cloudprober
 	defer hermes.CancelCloudprober() // Cancel Cloudprober after tests are completed
 
 	// Sets up web UI for cloudprober.
