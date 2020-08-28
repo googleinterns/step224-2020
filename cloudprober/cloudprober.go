@@ -51,19 +51,18 @@ import (
 //	- error while creating listener for default gRPC server: [error]
 //	- tlsconfig.UpdateTLSConfig() error: an error occurred when updating the TLS config from the config passed.
 func InitialiseCloudproberFromConfig(config string) (context.Context, func(), error) {
-
 	err := cloudprober.InitFromConfig(config)
 	if err != nil {
 		glog.Errorf("failed to initialise cloudprober, err: %v", err)
 		return nil, nil, err
 	}
 
-	// web.Init sets up web UI for cloudprober.
+	// Set up web UI for cloudprober.
 	web.Init()
 
-	ctx, cancelCloudprober := context.WithCancel(context.Background()) // Create new context with a cancel() function
+	ctx, cancelCloudprober := context.WithCancel(context.Background())  // Create new context with a cancel() function
 
-	cloudprober.Start(ctx) // Start running Cloudprober instance
+	cloudprober.Start(ctx)  // Start running Cloudprober instance
 
 	return ctx, cancelCloudprober, nil
 }
