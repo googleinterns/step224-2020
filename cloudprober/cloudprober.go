@@ -32,9 +32,24 @@ import (
 // - config: config should be the contents of a Cloudprober config file. This is most likely: "grpc_port=9314"
 //           -> the "grpc_port:" field is the only required field for the config.
 // Returns:
-// - context: 
-// - cancel func():
-// - error: 
+// - context: returns the context passed to Cloudprober for initialisation.
+// - cancel func(): returns the cancel() function for stopping Cloudprober.
+// - error:
+//	- logger.NewCloudproberLog() error: error initialising logging on GCE (Stackdriver)
+//	- sysvars.Init():
+//		- error getting local hostname: [error]:
+//			-> error getting hostname from os.Hostname()
+//		- other error
+//			-> error initialising Cloud metadata
+//	- config.ParseTemplate() error:
+//		-> regex compilation issue of config or config could not be processed as a Go text template
+//	- proto.UnmarshalText() error:
+//		-> The config does not match the proto that it is being unmarshalled with.
+//	- initDefaultServer() error:
+//		- failed to parse default port from the env var: [serverEnvVar]=[parsedPort]
+//		- error while creating listener for default HTTP server: [error]
+//	- error while creating listener for default gRPC server: [error]
+//	- tlsconfig.UpdateTLSConfig() error: an error occurred when updating the TLS config from the config passed.
 func InitialiseCloudproberFromConfig(config string) (context.Context, func(), error) {
 
 	err := cloudprober.InitFromConfig(config)

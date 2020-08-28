@@ -83,7 +83,6 @@ func TestRegisterAndAddProbe(t *testing.T) {
 
 	// Create a probe and then register and add it to the prober
 	err := cpc.RegisterAndAddProbe(int(myprobe.E_RedisProbe.Field), generateRedisProbeDef(testProbe0), &myprobe.Probe{})
-
 	if err != nil {
 		t.Errorf("Probe not correctly registered and added to Cloudprober, error: %v", err)
 	}
@@ -111,7 +110,7 @@ func TestRegisterAndAddProbe(t *testing.T) {
 
 	respProbes = resp.GetProbe()
 
-	if respProbes[1].GetName() != testProbe0 {
+	if respProbes[1].GetName() != testProbe1 {
 		t.Errorf("Expected probe %s to be running, got probe %s running", testProbe0, respProbes[1].GetName())
 	}
 

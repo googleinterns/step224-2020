@@ -19,6 +19,7 @@
 //
 // TODOs:
 // TODO(#38) Add support for secure connection to RPC server with credentials, if supported by Cloudprober.
+// TODO(): Add documentation on GRPC dial() errors.
 
 package cmd
 
@@ -61,6 +62,7 @@ func (cpc *CloudproberClient) InitClient(rpcServer string) error {
 		}
 		cpc.conn = conn
 		cpc.client = proberpb.NewCloudproberClient(conn) // Create a new Cloudprober gRPC Client
+		return nil
 	}
 
 	return nil
@@ -72,6 +74,9 @@ func (cpc *CloudproberClient) InitClient(rpcServer string) error {
 //	   - nil: No error occurred and the connection was successfully closed.
 //	   - Code 1, ErrClientConnClosing: This operation is illegal because the client connection is already closing.
 func (cpc *CloudproberClient) CloseConn() error {
+	cpc.clientMux.Lock()
+	cpc.clientMux.Unlock()
+
 	err := cpc.conn.Close() // Close the connection
 	return err
 }
@@ -82,10 +87,29 @@ func (cpc *CloudproberClient) CloseConn() error {
 //			 - This probe type must be registered as an extension.
 // Returns:
 // - error:
+//         - Code 3, InvalidArgument: probe config cannot be nil
+//         - error parsing regexp [...]: the machine name for this probe to run on does not compile as a regexp.
+//         - Code 6, AlreadyExists: probe [name] is already defined - the probe has already been added
+//         - Code 2, Unknown:
+//		- only one probe extension is allowed per probe, got %d extensions
+//			-> More than one probe extension type has been registered using cpprobes.RegisterProbeType()
+//		- no probe extension in probe config
+//			-> The probe proto does not have an extension registered.
+//		- no probes registered for the extension: [extension code]
+//			-> The proto has a probe extension, but there is no probe extension registered matching that extension code.
+//		- proto.GetExtension() error: extension missing, invalid, incomplete or proto cannot be extended.
+//			-> The proto.SetExtension() method must be called and supplied with valid data.
+//		- unregistered user defined probe: [probe name]
+//			-> The probe type has not been registered as a user defined probe.
+//		- unknown probe type: [probe type]
+//			-> The probe type does not match any expected types (including user-defined and extension).
+//		- probe.Init() error: an error occurred when the probe, created from the config passsed, was initialised.
+//			-> There was a problem in the Init() function of the probe type passed.
+//		- options.BuildProbeOptions() error: an error occurred when building the options for this probe from the config supplied.
+//			-> The options could not be built from the config supplied.
 func (cpc *CloudproberClient) addProbeFromConfig(probePb *configpb.ProbeDef) error {
-	cpc.clientMux.Lock()
-	defer cpc.clientMux.Unlock()
-
+	// No mutex locking handled here as this is a private method called by
+	// a public method which handles locking.
 	_, err := cpc.client.AddProbe(context.Background(), &proberpb.AddProbeRequest{ProbeConfig: probePb}) // Adds the probe to Cloudprober
 	return err
 }
