@@ -19,6 +19,13 @@
 
 package hermes
 
+import (
+	"context"
+
+	"github.com/golang/glog"
+	"github.com/google/cloudprober"
+)
+
 // FileOperation is an int used as part of the FileOperation enum within the intent log of Hermes' StateJournal.
 type FileOperation int
 
@@ -30,7 +37,7 @@ const (
 )
 
 // String() allows the FileOperation constants to be conveniently converted to a print-friendly format.
-func (fileOperation *FileOperation) String() string{
+func (fileOperation FileOperation) String() string {
 	return [...]string{"Create", "Delete"}[fileOperation]
 }
 
@@ -57,5 +64,40 @@ func (sj *StateJournal) Init() {
 
 // Hermes is the main Hermes prober that will startup Hermes and initiate monitoring targets.
 type Hermes struct {
-	stateJournal StateJournal // stateJournal stores the state of Hermes as a combination of next operation intent and a filenames map
+	Journal           StateJournal // stateJournal stores the state of Hermes as a combination of next operation intent and a filenames map
+	Ctx context.Context // Context for starting Cloudprober
+	CancelCloudprober func()       // cancelCloudprober is a cancel() function associated with the context passed to Cloudprober when initialised.
+}
+
+// InitialiseCloudproberFromConfig initialises Cloudprober from the config passed as an argument.
+// Parameters:
+// - config: config should be the contents of a Cloudprober config file. This is most likely: "grpc_port=9314"
+//           -> the "grpc_port:" field is the only required field for the config.
+// Returns:
+// - error:
+//	- logger.NewCloudproberLog() error: error initialising logging on GCE (Stackdriver)
+//	- sysvars.Init():
+//		- error getting local hostname: [error]:
+//			-> error getting hostname from os.Hostname()
+//		- other error
+//			-> error initialising Cloud metadata
+//	- config.ParseTemplate() error:
+//		-> regex compilation issue of config or config could not be processed as a Go text template
+//	- proto.UnmarshalText() error:
+//		-> The config does not match the proto that it is being unmarshalled with.
+//	- initDefaultServer() error:
+//		- failed to parse default port from the env var: [serverEnvVar]=[parsedPort]
+//		- error while creating listener for default HTTP server: [error]
+//	- error while creating listener for default gRPC server: [error]
+//	- tlsconfig.UpdateTLSConfig() error: an error occurred when updating the TLS config from the config passed.
+func (hermes *Hermes) InitialiseCloudproberFromConfig(config string) error {
+	err := cloudprober.InitFromConfig(config)
+	if err != nil {
+		glog.Errorf("failed to initialise cloudprober, err: %v", err)
+		return err
+	}
+
+	hermes.Ctx, hermes.CancelCloudprober = context.WithCancel(context.Background()) // Create new context with a cancel() function stored in the Hermes struct
+
+	return nil
 }

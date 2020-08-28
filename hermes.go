@@ -22,9 +22,10 @@ package main
 import (
 	"flag"
 	"strconv"
-	"github.com/golang/glog"
 
-	cp "github.com/googleinterns/step224-2020/cloudprober"
+	"github.com/golang/glog"
+	"github.com/googleinterns/step224-2020/hermes"
+	"github.com/google/cloudprober/web"
 )
 
 var (
@@ -34,14 +35,18 @@ var (
 func main() {
 	flag.Parse()
 
-	_, cancel, err := cp.InitialiseCloudproberFromConfig("grpc_port: " + strconv.Itoa(*rpc_port))
-
+	hermes := &hermes.Hermes{}
+	err := hermes.InitialiseCloudproberFromConfig("grpc_port: " + strconv.Itoa(*rpc_port))
 	if err != nil {
 		glog.Exitf("cloudprober could not be initialised from config: grpc_port: %d, err:%v", *rpc_port, err)
 	}
 
+	// Sets up web UI for cloudprober.
+	web.Init()
+
+	// Start running Cloudprober instance from Hermes context
+	cloudprober.Start(hermes.Ctx)
+
 	// Wait forever
 	select {}
-
-	cancel()
 }

@@ -24,8 +24,8 @@ package cmd
 
 import (
 	"context"
-	"sync"
 	"fmt"
+	"sync"
 
 	proberpb "github.com/google/cloudprober/prober/proto"
 	cpprobes "github.com/google/cloudprober/probes"
@@ -34,7 +34,7 @@ import (
 )
 
 type CloudproberClient struct {
-	conn  *grpc.ClientConn // Client connection for opening and closing the connection
+	conn      *grpc.ClientConn           // Client connection for opening and closing the connection
 	client    proberpb.CloudproberClient // Cloudprober gRPC client retained between RPC calls
 	clientMux sync.Mutex                 // Mutex lock for making CloudproberClient safe for concurrent use
 }
@@ -121,11 +121,11 @@ func (cpc *CloudproberClient) addProbeFromConfig(probePb *configpb.ProbeDef) err
 // - error:
 //	   - ClientNotInitialised: the gRPC client of CloudproberClient is not registered.
 //	     -> Solution: Call the InitClient(rpcServer string) method.
-func (cpc *CloudproberClient)  RegisterAndAddProbe(extensionNumber int, probePb *configpb.ProbeDef, hermesProbeToAdd cpprobes.Probe) error {
+func (cpc *CloudproberClient) RegisterAndAddProbe(extensionNumber int, probePb *configpb.ProbeDef, hermesProbeToAdd cpprobes.Probe) error {
 	cpc.clientMux.Lock()
 	defer cpc.clientMux.Unlock()
 
-	if cpc.client == nil{
+	if cpc.client == nil {
 		err := fmt.Errorf("ClientNotInitialised: cannot register and add a probe when client is not initialised")
 		return err
 	}
@@ -151,11 +151,11 @@ func (cpc *CloudproberClient)  RegisterAndAddProbe(extensionNumber int, probePb 
 //	   - Code: 5,  NotFound: cannot find a probe matching this probe name
 //	   - ClientNotInitialised: the gRPC client of CloudproberClient is not registered.
 //	     -> Solution: Call the InitClient(rpcServer string) method.
-func (cpc *CloudproberClient)  RemoveProbe(probeName string) error {
+func (cpc *CloudproberClient) RemoveProbe(probeName string) error {
 	cpc.clientMux.Lock()
 	defer cpc.clientMux.Unlock()
 
-	if cpc.client == nil{
+	if cpc.client == nil {
 		err := fmt.Errorf("ClientNotInitialised: cannot register and add a probe when client is not initialised")
 		return err
 	}
@@ -173,11 +173,11 @@ func (cpc *CloudproberClient)  RemoveProbe(probeName string) error {
 // - Error:
 //	   - ClientNotInitialised: the gRPC client of CloudproberClient is not registered.
 //	     -> Solution: Call the InitClient(rpcServer string) method.
-func (cpc *CloudproberClient)  ListProbes() (*proberpb.ListProbesResponse, error) {
+func (cpc *CloudproberClient) ListProbes() (*proberpb.ListProbesResponse, error) {
 	cpc.clientMux.Lock()
 	defer cpc.clientMux.Unlock()
 
-	if cpc.client == nil{
+	if cpc.client == nil {
 		err := fmt.Errorf("ClientNotInitialised: cannot register and add a probe when client is not initialised")
 		return nil, err
 	}

@@ -20,19 +20,22 @@
 package cmd
 
 import (
+	"github.com/golang/glog"
 	"os"
 	"testing"
-	"github.com/golang/glog"
 
-	cp "github.com/googleinterns/step224-2020/cloudprober"
 	"github.com/golang/protobuf/proto"
+	"github.com/google/cloudprober/examples/extensions/myprober/myprobe"
 	probes_configpb "github.com/google/cloudprober/probes/proto"
 	targetspb "github.com/google/cloudprober/targets/proto"
-	"github.com/google/cloudprober/examples/extensions/myprober/myprobe"
+	"github.com/google/cloudprober"
+	"github.com/google/cloudprober/web"
+
+	"github.com/googleinterns/step224-2020/hermes"
 )
 
 const (
-	cpCfg string = "grpc_port:9314" // Cloudprober config
+	cpCfg     string = "grpc_port:9314" // Cloudprober config
 	rpcServer string = "localhost:9314" // Cloudprober gRPC server address
 
 	testProbe0 string = "testExtension0"
@@ -40,40 +43,46 @@ const (
 )
 
 //setupHermes initialises an instance of Cloudprober so that RPCs can be sent to it.
-func setupHermes() func() {
-	_, cancel, err := cp.InitialiseCloudproberFromConfig(cpCfg)
-
+func setupHermes(hermes *hermes.Hermes) {
+	err := hermes.InitialiseCloudproberFromConfig(cpCfg)
 	if err != nil {
 		glog.Fatalf("Cloudprober could not be initialised, err: %v", err)
 	}
-
-	return cancel
 }
 
 // TestMain is used to setup Cloudprober before tests are run.
 // This is necessary for there to be a gRPC server to make RPCs to.
 func TestMain(m *testing.M) {
-	cancel := setupHermes()
+	hermes := &hermes.Hermes{}
+
+	setupHermes(hermes)              // Set up Hermes and initialise Cloudprober
+	defer hermes.CancelCloudprober() // Cancel Cloudprober after tests are completed
+
+	// Sets up web UI for cloudprober.
+	web.Init()
+
+	// Start running Cloudprober instance from Hermes context
+	cloudprober.Start(hermes.Ctx)
+
 	code := m.Run()
-	cancel() // Terminate Cloudprober
 	os.Exit(code)
 }
 
 // generationRedisProbeDef generates an inline probe definition of the RedisProbe probe extension.
 // The RedisProbe extension is supplied as an example extension in Cloudprober.
-func generateRedisProbeDef(name string) *probes_configpb.ProbeDef{
-        probeDef := &probes_configpb.ProbeDef{ // Create probe def
-                Name: proto.String(name),
-                Type: probes_configpb.ProbeDef_EXTENSION.Enum(),
-                Targets: &targetspb.TargetsDef{
-                        Type: &targetspb.TargetsDef_DummyTargets{},
-                },
-        }
+func generateRedisProbeDef(name string) *probes_configpb.ProbeDef {
+	probeDef := &probes_configpb.ProbeDef{ // Create probe def
+		Name: proto.String(name),
+		Type: probes_configpb.ProbeDef_EXTENSION.Enum(),
+		Targets: &targetspb.TargetsDef{
+			Type: &targetspb.TargetsDef_DummyTargets{},
+		},
+	}
 
 	// Add RedisProbe extension to probeDef
-        op := myprobe.ProbeConf_Op.Enum(myprobe.ProbeConf_SET)
-        proto.SetExtension(probeDef, myprobe.E_RedisProbe, &myprobe.ProbeConf{Op: op, Key: proto.String("testkey"), Value: proto.String("testval")})
-        return probeDef
+	op := myprobe.ProbeConf_Op.Enum(myprobe.ProbeConf_SET)
+	proto.SetExtension(probeDef, myprobe.E_RedisProbe, &myprobe.ProbeConf{Op: op, Key: proto.String("testkey"), Value: proto.String("testval")})
+	return probeDef
 }
 
 // TestRegisterAndAddProbe tests that an extension probe type can be registered and added to Cloudprober without error.
