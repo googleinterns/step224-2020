@@ -19,7 +19,6 @@
 //
 // TODOs:
 // TODO(#38) Add support for secure connection to RPC server with credentials, if supported by Cloudprober.
-// TODO(): Add documentation on GRPC dial() errors.
 
 package cmd
 
@@ -49,7 +48,8 @@ type CloudproberClient struct {
 // Returns:
 // - error:
 //	  - nil: No error occurred and the client was successfully initialised.
-//	  - TODO(): Add documentation on GRPC dial() errors.
+//	  - gRPC Error: See https://godoc.org/google.golang.org/grpc/codes for error codes.
+//		-> See https://github.com/grpc/grpc-go/blob/d25c71b54334380ff1febd25d88064b36de44b3c/clientconn.go#L123
 func (cpc *CloudproberClient) InitClient(rpcServer string) error {
 	cpc.clientMux.Lock()
 	defer cpc.clientMux.Unlock()
