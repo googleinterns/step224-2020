@@ -1,9 +1,7 @@
 package hermes
 
-
 import (
 	"fmt"
-	"strconv"
 	"crypto/sha1"
 )
 
@@ -11,30 +9,25 @@ type HermesFile struct {
 	name string
 	contents string
 }
-func (file *HermesFile) GenerateFileName(file_ID int, file_checksum string) {
-	id_string := ""
-	if file_ID < 10 {
-		id_string = "0" + strconv.Itoa(file_ID)
-	} else {
-		id_string = strconv.Itoa(file_ID)
-	}
-	file.name := "Hermes_"+id_string+file_checksum
+func (file *HermesFile) generateFileName(file_ID int, file_checksum string) {
+	file_name :=  fmt.Sprintf("Hermes_%02d%v", file_ID, file_checksum)
+	file.name = file_name
 }
-
 func (file *HermesFile) generateFileContents(file_ID int) {
 	file.contents = "jhfvjhdfjhfjjhjhdfvjvcvfjh";
 }
-
-func (file HermesFile) GenerateFileChecksum() string {
+func (file HermesFile) generateFileChecksum() string {
+	
 	file_contents := []byte(file.contents)
 	hash := sha1.Sum(file_contents)
-	checksum := fmt.Sprintf("_%x", hash)
+	checksum := fmt.Sprintf("%s%x","_", hash)
 	return checksum;
 }
-func GenerateHermesFile (id int) HermesFile {
+func GenerateFile (id int) HermesFile {
 	file := HermesFile{}
-	file.GenerateFileContents(id)
-	checksum := file.GenerateFileChecksum()
-	file.GenerateFileName(id, checksum)
+	file.generateFileContents(id)
+	checksum := file.generateFileChecksum()
+	file.generateFileName(id, checksum)
 	return file
 }
+
