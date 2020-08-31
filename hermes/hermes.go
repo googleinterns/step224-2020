@@ -64,9 +64,9 @@ func (sj *StateJournal) Init() {
 
 // Hermes is the main Hermes prober that will startup Hermes and initiate monitoring targets.
 type Hermes struct {
-	Journal           StateJournal // stateJournal stores the state of Hermes as a combination of next operation intent and a filenames map
-	Ctx context.Context // Context for starting Cloudprober
-	CancelCloudprober func()       // cancelCloudprober is a cancel() function associated with the context passed to Cloudprober when initialised.
+	Journal           StateJournal    // stateJournal stores the state of Hermes as a combination of next operation intent and a filenames map
+	Ctx               context.Context // Context for starting Cloudprober
+	CancelCloudprober func()          // cancelCloudprober is a cancel() function associated with the context passed to Cloudprober when initialised.
 }
 
 // InitialiseCloudproberFromConfig initialises Cloudprober from the config passed as an argument.

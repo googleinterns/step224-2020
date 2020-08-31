@@ -24,8 +24,9 @@ import (
 	"strconv"
 
 	"github.com/golang/glog"
-	"github.com/googleinterns/step224-2020/hermes"
+	"github.com/google/cloudprober"
 	"github.com/google/cloudprober/web"
+	"github.com/googleinterns/step224-2020/hermes"
 )
 
 var (

@@ -56,13 +56,13 @@ func TestMain(m *testing.M) {
 	test_hermes := &hermes.Hermes{}
 
 	setupHermes(test_hermes)              // Set up Hermes and initialise Cloudprober
-	defer hermes.CancelCloudprober() // Cancel Cloudprober after tests are completed
+	defer test_hermes.CancelCloudprober() // Cancel Cloudprober after tests are completed
 
 	// Sets up web UI for cloudprober.
 	web.Init()
 
 	// Start running Cloudprober instance from Hermes context
-	cloudprober.Start(hermes.Ctx)
+	cloudprober.Start(test_hermes.Ctx)
 
 	code := m.Run()
 	os.Exit(code)
