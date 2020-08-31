@@ -17,9 +17,9 @@
 // The DeleteFileProbe proto describes the information necessary for a probe to delete a
 // file in GCS.
 
-syntax = "proto3";
+syntax = "proto2";
 
-package deletefile;
+package gcs.deletefile;
 
 option go_package = "github.com/googleinterns/step224-2020/gcs/deleteFile/proto";
 
@@ -31,15 +31,24 @@ import "github.com/googleinterns/step224-2020/config/proto/probe.proto";
 message DeleteFileProbe {
 
   // REQUIRED
-  hermes.HermesProbeDef probedef = 1;
+  // HermesProbeDef includes extra information, such as additional metrics, that
+  // is not included in the config.proto supplied by Cloudprober.
+  optional hermes.HermesProbeDef probedef = 1;
 
   // REQUIRED
-  string bucketName = 2;  // The name of the bucket that contains the object to be deleted.
+  // The name of the bucket that contains the object to be deleted.
+  optional string bucketName = 2;  
 
   // REQUIRED
-  string objectName = 3;  // The name of the object to be deleted.
+  // The name of the object to be deleted.
+  optional string objectName = 3;
 
+  // Must extend ProbeDef so this probe can be added to Cloudprober as an
+  // extension.
   extend cloudprober.probes.ProbeDef {
-    option DeleteFileProbe delete_file_probe = 320;  // 300 because GCS, 20 because Delete probe
+    // Extension code explanation:
+    // 200-299 = Codes for GCS
+    // 220-229 = Codes for deleting files in GCS
+    optional DeleteFileProbe delete_file_probe = 220;  // 200 because GCS, 20 because Delete probe
   }
 }
