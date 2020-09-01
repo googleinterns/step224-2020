@@ -37,7 +37,6 @@ func (file *HermesFile) generateFileContents(file_id int) {
 func (file HermesFile) generateFileChecksum() string {
 	file_contents := []byte(file.contents)
 	hash := sha1.Sum(file_contents)
-	// return checksum in hex notation
 	return fmt.Sprintf("%x", hash)
 }
 
