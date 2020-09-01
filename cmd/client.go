@@ -58,35 +58,6 @@ func NewClient(rpcServer string) (*CloudproberClient, error) {
 	return &CloudproberClient{conn: conn, client: proberpb.NewCloudproberClient(conn)}, nil
 }
 
-// initClient establishes an active client connection to the Cloudprober gRPC server.
-// If there is already an active connection, it will do nothing and return nil.
-// If there is not an active connection, it will make one and assign a Cloudprober client
-// to the CloudproberClient.client field.
-// Parameters:
-// - rpcServer: Pass the rpcServer address and port as a string formatted as: "hostname:port", e.g. "localhost:1234"
-// Returns:
-// - error:
-//	  - nil: No error occurred and the client was successfully initialised.
-//	  - gRPC Error: See https://godoc.org/google.golang.org/grpc/codes for error codes.
-//		-> See https://github.com/grpc/grpc-go/blob/d25c71b54334380ff1febd25d88064b36de44b3c/clientconn.go#L123
-func (client *CloudproberClient) initClient(rpcServer string) error {
-	client.clientMux.Lock()
-	defer client.clientMux.Unlock()
-	var err error
-
-	if client.client == nil { // If there is not an active client connection, make one.
-		client.conn, err = grpc.Dial(rpcServer, grpc.WithInsecure())
-		if err != nil {
-			dialErr := fmt.Errorf("GRPC_DIAL_ERROR: %v", err)
-			return dialErr
-		}
-		client.client = proberpb.NewCloudproberClient(client.conn)
-		return nil
-	}
-
-	return nil
-}
-
 // CloseConn is used for closing the client connection with the gRPC server.
 // Returns:
 // - error:
@@ -181,8 +152,5 @@ func (client *CloudproberClient) RemoveProbe(probeName string) error {
 // - Error:
 //	   - See Cloudprober ListProbes() RPC for details on an error.
 func (client *CloudproberClient) ListProbes() (*proberpb.ListProbesResponse, error) {
-	// client.clientMux.Lock()
-	// defer client.clientMux.Unlock()
-
 	return client.client.ListProbes(context.Background(), &proberpb.ListProbesRequest{})
 }
