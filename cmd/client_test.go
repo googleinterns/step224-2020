@@ -20,13 +20,13 @@ package cmd
 import (
 	"github.com/golang/glog"
 	"testing"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/cloudprober"
 	"github.com/google/cloudprober/examples/extensions/myprober/myprobe"
 	probes_configpb "github.com/google/cloudprober/probes/proto"
 	targetspb "github.com/google/cloudprober/targets/proto"
-
 	"github.com/googleinterns/step224-2020/hermes"
 )
 
@@ -35,6 +35,7 @@ const (
 	rpcServer string = "localhost:9314" // Cloudprober gRPC server address
 )
 
+// TODO: Make these proper table-driven tests.
 var (
 	testProbes = []string{
 		"testExtension0",
@@ -42,32 +43,36 @@ var (
 )
 
 func setupCloudproberAndClient() (*hermes.Hermes, *CloudproberClient) {
-	// Initialise Cloudprober
 	testHermes := &hermes.Hermes{}
 	err := testHermes.InitialiseCloudproberFromConfig(cpCfg)
 	if err != nil {
 		glog.Fatalf("Cloudprober could not be initialised, err: %v", err)
 	}
 
-	// Start running Cloudprober instance from Hermes context
 	cloudprober.Start(testHermes.Ctx)
 
-	// Initialise Cloudprober gRPC client
-	var client *CloudproberClient
-	client, err = NewClient(rpcServer)
-	if err != nil {
-		glog.Fatalf("Cloudprober gRPC Client could not be initialised: %v", err)
+	client, errClient := NewClient(rpcServer)
+	if errClient != nil {
+		glog.Fatalf("Cloudprober gRPC Client could not be initialised: %v", errClient)
 	}
 
 	return testHermes, client
 }
 
 func teardownCloudproberAndClient(testHermes *hermes.Hermes, client *CloudproberClient) {
-	// Close client connection
+	// TODO: Find a safe way to close down Cloudprober and restart it.
+	for i := 0; i < len(testProbes); i++ {
+		err := client.RemoveProbe(testProbes[i])
+		if err != nil {
+			glog.Errorf("RemoveProbe() failed, expected error: %v, got %v", nil, err)
+		}
+
+	}
+
 	client.CloseConn()
 
-	// Close down Cloudprober
-	testHermes.CancelCloudprober()
+	// Need to wait for the RemoveProbe() RPCs to be processed on the server side
+	time.Sleep(1 * time.Second)
 }
 
 // TODO: Replace this test with a test using a Hermes probe definition
@@ -82,20 +87,18 @@ func generateRedisProbeDef(name string) *probes_configpb.ProbeDef {
 		},
 	}
 
-	// Add RedisProbe extension to probeDef
+	// Add RedisProbe extension to probeDef proto
 	op := myprobe.ProbeConf_Op.Enum(myprobe.ProbeConf_SET)
 	proto.SetExtension(probeDef, myprobe.E_RedisProbe, &myprobe.ProbeConf{Op: op, Key: proto.String("testkey"), Value: proto.String("testval")})
 	return probeDef
 }
 
 // TestRegisterAndAddProbe tests that an extension probe type can be registered and added to Cloudprober without error.
-func testRegisterAndAddProbe(t *testing.T) {
-	// Setup Cloudprober and gRPC client connection
+func TestRegisterAndAddProbe(t *testing.T) {
 	testHermes, client := setupCloudproberAndClient()
 	defer teardownCloudproberAndClient(testHermes, client)
 
 	for i := 0; i < len(testProbes); i++ {
-		// Create a probe and then register and add it to the prober
 		err := client.RegisterAndAddProbe(int(myprobe.E_RedisProbe.Field), testHermes.Ctx, generateRedisProbeDef(testProbes[i]), &myprobe.Probe{})
 		if err != nil {
 			t.Errorf("Probe not correctly registered and added to Cloudprober, expected error: %v, got: %v", nil, err)
@@ -115,13 +118,11 @@ func testRegisterAndAddProbe(t *testing.T) {
 }
 
 // TestRemoveProbe tests that the RemoveProbe() method removes a probe from Cloudprober
-func testRemoveProbe(t *testing.T) {
-	// Setup Cloudprober and gRPC client connection
+func TestRemoveProbe(t *testing.T) {
 	testHermes, client := setupCloudproberAndClient()
 	defer teardownCloudproberAndClient(testHermes, client)
 
 	for i := 0; i < len(testProbes); i++ {
-		// Create a probe and then register and add it to the prober
 		err := client.RegisterAndAddProbe(int(myprobe.E_RedisProbe.Field), testHermes.Ctx, generateRedisProbeDef(testProbes[i]), &myprobe.Probe{})
 		if err != nil {
 			t.Errorf("Probe not correctly registered and added to Cloudprober, expected error: %v, got: %v", nil, err)
@@ -159,12 +160,10 @@ func testRemoveProbe(t *testing.T) {
 
 // TestListProbes tests that the ListProbes() method returns all active probes in Cloudprober
 func TestListProbes(t *testing.T) {
-	// Setup Cloudprober and gRPC client connection
 	testHermes, client := setupCloudproberAndClient()
 	defer teardownCloudproberAndClient(testHermes, client)
 
 	for i := 0; i < len(testProbes); i++ {
-		// Create a probe and then register and add it to the prober
 		err := client.RegisterAndAddProbe(int(myprobe.E_RedisProbe.Field), testHermes.Ctx, generateRedisProbeDef(testProbes[i]), &myprobe.Probe{})
 		if err != nil {
 			t.Errorf("Probe not correctly registered and added to Cloudprober, expected error: %v, got: %v", nil, err)

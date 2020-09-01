@@ -96,7 +96,7 @@ func (hermes *Hermes) InitialiseCloudproberFromConfig(config string) error {
 		glog.Errorf("failed to initialise cloudprober, err: %v", err)
 		return err
 	}
-	// Create new context with a cancel() function stored in the Hermes struct
+
 	hermes.Ctx, hermes.CancelCloudprober = context.WithCancel(context.Background())
 
 	return nil

@@ -46,7 +46,6 @@ func main() {
 	// Sets up web UI for cloudprober.
 	web.Init()
 
-	// Start running Cloudprober instance from Hermes context
 	cloudprober.Start(hermes.Ctx)
 
 	// Wait forever

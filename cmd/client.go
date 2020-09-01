@@ -51,9 +51,11 @@ type CloudproberClient struct {
 //	  - gRPC Error: See https://godoc.org/google.golang.org/grpc/codes for error codes.
 //		-> See https://github.com/grpc/grpc-go/blob/d25c71b54334380ff1febd25d88064b36de44b3c/clientconn.go#L123
 func NewClient(rpcServer string) (*CloudproberClient, error) {
-	client := &CloudproberClient{}
-	err := client.initClient(rpcServer)
-	return client, err
+	conn, err := grpc.Dial(rpcServer, grpc.WithInsecure())
+	if err != nil {
+		return nil, fmt.Errorf("GRPC_DIAL_ERROR: %v", err)
+	}
+	return &CloudproberClient{conn: conn, client: proberpb.NewCloudproberClient(conn)}, nil
 }
 
 // initClient establishes an active client connection to the Cloudprober gRPC server.
@@ -73,12 +75,12 @@ func (client *CloudproberClient) initClient(rpcServer string) error {
 	var err error
 
 	if client.client == nil { // If there is not an active client connection, make one.
-		client.conn, err = grpc.Dial(rpcServer, grpc.WithInsecure()) // Make a connection
+		client.conn, err = grpc.Dial(rpcServer, grpc.WithInsecure())
 		if err != nil {
 			dialErr := fmt.Errorf("GRPC_DIAL_ERROR: %v", err)
 			return dialErr
 		}
-		client.client = proberpb.NewCloudproberClient(client.conn) // Create a new Cloudprober gRPC Client
+		client.client = proberpb.NewCloudproberClient(client.conn)
 		return nil
 	}
 
@@ -92,10 +94,12 @@ func (client *CloudproberClient) initClient(rpcServer string) error {
 //	   - Code 1, ErrClientConnClosing: This operation is illegal because the client connection is already closing.
 func (client *CloudproberClient) CloseConn() {
 	client.clientMux.Lock()
-	client.clientMux.Unlock()
+	defer client.clientMux.Unlock()
 
-	err := client.conn.Close() // Close the connection
-	glog.Errorf("Cloudprober gRPC client could not close connection, err: %v", err)
+	err := client.conn.Close()
+	if err != nil {
+		glog.Errorf("Cloudprober gRPC client could not close connection, err: %v", err)
+	}
 }
 
 // addProbeFromConfig adds a probe to Cloudprober via the gRPC client.
@@ -128,7 +132,7 @@ func (client *CloudproberClient) CloseConn() {
 func (client *CloudproberClient) addProbeFromConfig(ctx context.Context, probePb *configpb.ProbeDef) error {
 	// No mutex locking handled here as this is a private method called by
 	// a public method which handles locking.
-	_, err := client.client.AddProbe(ctx, &proberpb.AddProbeRequest{ProbeConfig: probePb}) // Adds the probe to Cloudprober
+	_, err := client.client.AddProbe(ctx, &proberpb.AddProbeRequest{ProbeConfig: probePb})
 	return err
 }
 
@@ -142,7 +146,9 @@ func (client *CloudproberClient) RegisterAndAddProbe(extensionNumber int, ctx co
 	client.clientMux.Lock()
 	defer client.clientMux.Unlock()
 
-	cpprobes.RegisterProbeType(extensionNumber, func() cpprobes.Probe { return hermesProbeToAdd }) // First, register the probe as an extension with Cloudprober.
+	// First, register the probe as an extension with Cloudprober.
+	cpprobes.RegisterProbeType(extensionNumber, func() cpprobes.Probe { return hermesProbeToAdd })
+
 	// Add the probe to Cloudprober
 	// The probe will be scheduled and run by Cloudprober
 	// Adding a probe will consume the probe type registration.
@@ -164,9 +170,7 @@ func (client *CloudproberClient) RemoveProbe(probeName string) error {
 	client.clientMux.Lock()
 	defer client.clientMux.Unlock()
 
-	probeToRemove := &probeName // Need to use a string pointer for RemoveProbeRequest{}
-
-	_, err := client.client.RemoveProbe(context.Background(), &proberpb.RemoveProbeRequest{ProbeName: probeToRemove}) // Remove probe from Cloudprober
+	_, err := client.client.RemoveProbe(context.Background(), &proberpb.RemoveProbeRequest{ProbeName: &probeName})
 	return err
 }
 
@@ -180,5 +184,5 @@ func (client *CloudproberClient) ListProbes() (*proberpb.ListProbesResponse, err
 	client.clientMux.Lock()
 	defer client.clientMux.Unlock()
 
-	return client.client.ListProbes(context.Background(), &proberpb.ListProbesRequest{}) // Submit ListProbes() rpc.
+	return client.client.ListProbes(context.Background(), &proberpb.ListProbesRequest{})
 }
