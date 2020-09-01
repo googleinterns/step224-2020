@@ -10,7 +10,7 @@ type HermesFile struct {
 	contents string
 }
 
-func (file *HermesFile) generateFileName(file_ID int, file_checksum string) {
+func (file *HermesFile) generateFileName(file_id int, file_checksum string) {
 	file_name :=  fmt.Sprintf("Hermes_%02d%v", file_ID, file_checksum)
 	file.name = file_name
 }
