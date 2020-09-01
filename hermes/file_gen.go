@@ -20,7 +20,7 @@ import (
 
 type HermesFile struct {
 	Name string
-	contents string
+	Contents string
 }
 
 // method of HermesFile generates HermesFile.name of the form Hermes_id_checksum where id is an integer & id <= 50
