@@ -25,7 +25,7 @@ type HermesFile struct {
 
 // method of HermesFile generates HermesFile.name of the form Hermes_id_checksum where id is an integer & id <= 50
 func (file *HermesFile) generateFileName(file_id int, file_checksum string) {
-	file.name :=  fmt.Sprintf("Hermes_%02d_%v", file_id, file_checksum)
+	file.name =  fmt.Sprintf("Hermes_%02d_%v", file_id, file_checksum)
 }
 
 // method of HermesFile generates HermesFile.contents now a string without any significance in the future a pseudo random byte generator will be used
