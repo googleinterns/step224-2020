@@ -5,7 +5,6 @@ import(
 	"strconv"
 )
 
-
 func TestChecksum(t *testing.T){
 	global_contents := "jhfvjhdfjhfjjhjhdfvjvcvfjh"
 	want := "_68f3caf439065824dcf75651c202e9f7c28ebf07" //expected checksum result
@@ -35,4 +34,3 @@ func TestFileName(t *testing.T){
 		t.Errorf("GenerateFileName(%v, \"abba\") failed expected %v got %v", file_ID, want, got)
 	}
 }
-
