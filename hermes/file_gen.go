@@ -19,7 +19,7 @@ import (
 )
 
 type HermesFile struct {
-	name string
+	Name string
 	contents string
 }
 
