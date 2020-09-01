@@ -11,8 +11,7 @@ type HermesFile struct {
 }
 
 func (file *HermesFile) generateFileName(file_id int, file_checksum string) {
-	file_name :=  fmt.Sprintf("Hermes_%02d%v", file_ID, file_checksum)
-	file.name = file_name
+	file.name :=  fmt.Sprintf("Hermes_%02d_%v", file_id, file_checksum)
 }
 
 func (file *HermesFile) generateFileContents(file_ID int) {
