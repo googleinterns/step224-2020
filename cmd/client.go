@@ -117,14 +117,9 @@ func (client *CloudproberClient) RegisterAndAddProbe(extensionNumber int, ctx co
 	client.clientMux.Lock()
 	defer client.clientMux.Unlock()
 
-	// First, register the probe as an extension with Cloudprober.
 	cpprobes.RegisterProbeType(extensionNumber, func() cpprobes.Probe { return hermesProbeToAdd })
 
-	// Add the probe to Cloudprober
-	// The probe will be scheduled and run by Cloudprober
-	// Adding a probe will consume the probe type registration.
-	// If you want to add multiple probes, you must register and add each one individually.
-	// Only one extension type can be registered at any given time.
+	// Only one extension type per proto config can be registered at any given time.
 	// If more are registered, Cloudprober will throw an error.
 	return client.addProbeFromConfig(ctx, probePb)
 }
