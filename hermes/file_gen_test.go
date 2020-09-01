@@ -18,7 +18,7 @@ func TestChecksum(t *testing.T){
 
 func TestFileName(t *testing.T){
 	file := HermesFile{}
-	file_ID := 23;
+	file_id := 23;
 	fake_checksum :="_abba"
 	want :=  "Hermes_"+strconv.Itoa(file_ID)+"_abba" //expected file name result
 	file.GenerateFileName(file_ID, fake_checksum)
