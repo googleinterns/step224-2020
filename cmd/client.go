@@ -181,8 +181,8 @@ func (client *CloudproberClient) RemoveProbe(probeName string) error {
 // - Error:
 //	   - See Cloudprober ListProbes() RPC for details on an error.
 func (client *CloudproberClient) ListProbes() (*proberpb.ListProbesResponse, error) {
-	client.clientMux.Lock()
-	defer client.clientMux.Unlock()
+	// client.clientMux.Lock()
+	// defer client.clientMux.Unlock()
 
 	return client.client.ListProbes(context.Background(), &proberpb.ListProbesRequest{})
 }
