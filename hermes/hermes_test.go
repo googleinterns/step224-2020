@@ -55,14 +55,11 @@ func TestInitialiseCloudproberFromConfig(t *testing.T) {
 
 // TestFileOperationString tests that the String() method of FileOperation properly formats the enum as a string.
 func TestFileOperationString(t *testing.T) {
-	createOp := Create
-	deleteOp := Delete
-
 	expectedCreate := "Create"
 	expectedDelete := "Delete"
 
-	gotCreate := fmt.Sprintf("%s", createOp)
-	gotDelete := fmt.Sprintf("%s", deleteOp)
+	gotCreate := fmt.Sprintf("%s", Create)
+	gotDelete := fmt.Sprintf("%s", Delete)
 
 	if gotCreate != expectedCreate {
 		t.Errorf("Expected %s, got %s", expectedCreate, gotCreate)

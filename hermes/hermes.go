@@ -44,8 +44,8 @@ func (fileOperation FileOperation) String() string {
 // Intent stores the next intended file operation of Hermes.
 // This is used as part of the StateJournal of Hermes.
 type Intent struct {
-	operation FileOperation // Stores the file operation intent, either CREATE or DELETE
-	filename  string        // Stores the filename that the operation is being performed on.
+	operation FileOperation `json:"fileoperation"` // Stores the file operation intent, either CREATE or DELETE
+	filename  string        `json:"filename"`      // Stores the filename that the operation is being performed on.
 }
 
 // StateJournal stores the state of Hermes in two parts: the next operation intent and a map of filenames.
@@ -53,8 +53,8 @@ type Intent struct {
 // The filenames map is a map of file IDs to filenames.
 // If an entry does not exist for a given ID, then the file does not exist (i.e. has been deleted)
 type StateJournal struct {
-	intent    Intent         // intent stores the next intended file operation and the name of the file that the operation is being performed on.
-	filenames map[int]string // filenames is a map of file IDs to filenames.
+	intent    Intent         `json:"intent"`    // intent stores the next intended file operation and the name of the file that the operation is being performed on.
+	filenames map[int]string `json:"filenames"` // filenames is a map of file IDs to filenames.
 }
 
 // Init initialises the map in the StateJournal so that entries can be added to it.
@@ -96,8 +96,8 @@ func (hermes *Hermes) InitialiseCloudproberFromConfig(config string) error {
 		glog.Errorf("failed to initialise cloudprober, err: %v", err)
 		return err
 	}
-
-	hermes.Ctx, hermes.CancelCloudprober = context.WithCancel(context.Background()) // Create new context with a cancel() function stored in the Hermes struct
+	// Create new context with a cancel() function stored in the Hermes struct
+	hermes.Ctx, hermes.CancelCloudprober = context.WithCancel(context.Background())
 
 	return nil
 }

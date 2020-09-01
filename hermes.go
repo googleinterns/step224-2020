@@ -21,6 +21,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"strconv"
 
 	"github.com/golang/glog"
@@ -37,7 +38,7 @@ func main() {
 	flag.Parse()
 
 	hermes := &hermes.Hermes{}
-	err := hermes.InitialiseCloudproberFromConfig("grpc_port: " + strconv.Itoa(*rpc_port))
+	err := hermes.InitialiseCloudproberFromConfig(buildConfig())
 	if err != nil {
 		glog.Exitf("cloudprober could not be initialised from config: grpc_port: %d, err:%v", *rpc_port, err)
 	}
@@ -50,4 +51,11 @@ func main() {
 
 	// Wait forever
 	select {}
+}
+
+// buildConfig() builds the configuration details for Cloudprober based on the flag contents.
+// Returns:
+// - string: Returns the configuration details for Cloudprober as a string.
+func buildConfig() string {
+	return fmt.Sprintf("grpc_port: " + strconv.Itoa(*rpc_port))
 }
