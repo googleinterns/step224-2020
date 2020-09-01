@@ -7,7 +7,7 @@ import(
 
 func TestChecksum(t *testing.T){
 	global_contents := "jhfvjhdfjhfjjhjhdfvjvcvfjh"
-	want := "_68f3caf439065824dcf75651c202e9f7c28ebf07" //expected checksum result
+	want := "_68f3caf439065824dcf75651c202e9f7c28ebf07"  //expected checksum result
 	file := HermesFile{}
 	file.contents = global_contents;
 	got := file.GenerateFileChecksum()
