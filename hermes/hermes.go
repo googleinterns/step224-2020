@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-// Author: Evan Spendlove (@evanSpendlove)
-//
 // hermes.go defines the structures necessary for the main hermes object to
 // monitor a storage system.
 
@@ -22,7 +20,6 @@ package hermes
 import (
 	"context"
 
-	"github.com/golang/glog"
 	"github.com/google/cloudprober"
 )
 
@@ -37,6 +34,8 @@ const (
 )
 
 // String() allows the FileOperation constants to be conveniently converted to a print-friendly format.
+// Returns:
+// - string: Returns the print-friendly string version of the fileOperation enum.
 func (fileOperation FileOperation) String() string {
 	return [...]string{"Create", "Delete"}[fileOperation]
 }
@@ -66,7 +65,7 @@ func (sj *StateJournal) Init() {
 type Hermes struct {
 	Journal           StateJournal    // stateJournal stores the state of Hermes as a combination of next operation intent and a filenames map
 	Ctx               context.Context // Context for starting Cloudprober
-	CancelCloudprober func()          // cancelCloudprober is a cancel() function associated with the context passed to Cloudprober when initialised.
+	CancelCloudprober func()          // CancelCloudprober is a cancel() function associated with the context passed to Cloudprober when initialised.
 }
 
 // InitialiseCloudproberFromConfig initialises Cloudprober from the config passed as an argument.
@@ -90,14 +89,6 @@ type Hermes struct {
 //		- error while creating listener for default HTTP server: [error]
 //	- error while creating listener for default gRPC server: [error]
 //	- tlsconfig.UpdateTLSConfig() error: an error occurred when updating the TLS config from the config passed.
-func (hermes *Hermes) InitialiseCloudproberFromConfig(config string) error {
-	err := cloudprober.InitFromConfig(config)
-	if err != nil {
-		glog.Errorf("failed to initialise cloudprober, err: %v", err)
-		return err
-	}
-
-	hermes.Ctx, hermes.CancelCloudprober = context.WithCancel(context.Background())
-
-	return nil
+func (h *Hermes) InitialiseCloudproberFromConfig(config string) error {
+	return cloudprober.InitFromConfig(config)
 }

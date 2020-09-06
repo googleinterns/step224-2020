@@ -12,14 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-// Author: Evan Spendlove (@evanSpendlove)
-//
 // hermes_test.go tests that the Hermes struct and its associated functions work as expected.
 // This includes initialising Cloudprober.
 
 package hermes
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -34,12 +33,12 @@ const cfg = "grpc_port:9314"
 func TestInitialiseCloudproberFromConfig(t *testing.T) {
 	hermes := &Hermes{}
 
-	err := hermes.InitialiseCloudproberFromConfig(cfg) // This initialises Cloudprober and stores a cancelCloudprober() function in hermes.
-	defer hermes.CancelCloudprober()                   // Defer cancelling Cloudprober until the end of the test
-
-	if err != nil {
-		t.Errorf("Expected no error from hermes.InitialiseCloudproberFromConfig(), got %v", err)
+	if err := hermes.InitialiseCloudproberFromConfig(cfg); err != nil {
+		t.Fatalf("Expected no error from hermes.InitialiseCloudproberFromConfig(), got %v", err)
 	}
+
+	hermes.Ctx, hermes.CancelCloudprober = context.WithCancel(context.Background())
+	defer hermes.CancelCloudprober()
 
 	// Sets up web UI for cloudprober.
 	web.Init()
@@ -55,17 +54,18 @@ func TestInitialiseCloudproberFromConfig(t *testing.T) {
 
 // TestFileOperationString tests that the String() method of FileOperation properly formats the enum as a string.
 func TestFileOperationString(t *testing.T) {
-	expectedCreate := "Create"
-	expectedDelete := "Delete"
-
-	gotCreate := fmt.Sprintf("%s", Create)
-	gotDelete := fmt.Sprintf("%s", Delete)
-
-	if gotCreate != expectedCreate {
-		t.Errorf("Expected %s, got %s", expectedCreate, gotCreate)
+	var fileOpTests = []struct {
+		want  string
+		input FileOperation
+	}{
+		{"Create", Create},
+		{"Delete", Delete},
 	}
 
-	if gotDelete != expectedDelete {
-		t.Errorf("Expected %s, got %s", expectedDelete, gotDelete)
+	for _, op := range fileOpTests {
+		got := fmt.Sprintf("%s", op.input)
+		if got != op.want {
+			t.Errorf("Want %s, got %s", op.want, got)
+		}
 	}
 }

@@ -12,14 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-// Author: Evan Spendlove (@evanSpendlove)
-//
 // Client.go creates the client for connecting to, and making requests to, the
 // gRPC server of Cloudprober.
 //
 // TODOs:
-// TODO(#38) Add support for secure connection to RPC server with credentials, if supported by Cloudprober.
-// TODO: Include details of these errors (addProbeFromConfig method) in the error message.
+// TODO(#38): Add support for secure connection to RPC server with credentials, if supported by Cloudprober.
+// TODO(evanSpendlove): Include details of these errors (addProbeFromConfig method) in the error message.
 
 package cmd
 
@@ -29,16 +27,17 @@ import (
 	"sync"
 
 	"github.com/golang/glog"
+	"google.golang.org/grpc"
+
 	proberpb "github.com/google/cloudprober/prober/proto"
 	cpprobes "github.com/google/cloudprober/probes"
 	configpb "github.com/google/cloudprober/probes/proto"
-	"google.golang.org/grpc"
 )
 
 type CloudproberClient struct {
 	conn      *grpc.ClientConn           // Client connection for opening and closing the connection
-	client    proberpb.CloudproberClient // Cloudprober gRPC client retained between RPC calls
 	clientMux sync.Mutex                 // Mutex lock for making CloudproberClient safe for concurrent use
+	client    proberpb.CloudproberClient // Cloudprober gRPC client retained between RPC calls
 }
 
 // NewClient creates, initialises and returns a new CloudproberClient.
@@ -46,6 +45,7 @@ type CloudproberClient struct {
 // Parameters:
 // - rpcServer: Pass the rpcServer address and port as a string formatted as: "hostname:port", e.g. "localhost:1234"
 // Returns:
+// - *CloudproberClient: returns a CloudproberClient with a client connection to the Cloudprober gRPC server.
 // - error:
 //	  - nil: No error occurred and the client was successfully initialised.
 //	  - gRPC Error: See https://godoc.org/google.golang.org/grpc/codes for error codes.
@@ -59,26 +59,23 @@ func NewClient(rpcServer string) (*CloudproberClient, error) {
 }
 
 // CloseConn is used for closing the client connection with the gRPC server.
-// Returns:
-// - error:
-//	   - nil: No error occurred and the connection was successfully closed.
-//	   - Code 1, ErrClientConnClosing: This operation is illegal because the client connection is already closing.
-func (client *CloudproberClient) CloseConn() {
-	client.clientMux.Lock()
-	defer client.clientMux.Unlock()
+func (c *CloudproberClient) CloseConn() {
+	c.clientMux.Lock()
+	defer c.clientMux.Unlock()
 
-	err := client.conn.Close()
-	if err != nil {
+	if err := c.conn.Close(); err != nil {
 		glog.Errorf("Cloudprober gRPC client could not close connection, err: %v", err)
 	}
 }
 
-// addProbeFromConfig adds a probe to Cloudprober via the gRPC client.
+// RegisterAndAddProbe registers a probe type and adds the probe to Cloudprober to be run.
 // Parameters:
-// - probePb: - This probe config must be unmarshalled before being passed as an argument.
-//			 - This probe type must be registered as an extension.
+// - extensionNumber: The proto extension number from the proto of this probe type.
+// - probePb: This probe config must be unmarshalled before being passed as an argument.
+// - ctx: Context used for cancelling RPCs.
+// - hermesProbeToAdd - An empty probe object of the desired probe type.
 // Returns:
-// TODO: Include details of these errors in the error message.
+// TODO(evanSpendlove): Include details of these errors in the error message.
 // - error:
 //         - Code 3, InvalidArgument: probe config cannot be nil
 //         - error parsing regexp [...]: the machine name for this probe to run on does not compile as a regexp.
@@ -100,52 +97,43 @@ func (client *CloudproberClient) CloseConn() {
 //			-> There was a problem in the Init() function of the probe type passed.
 //		- options.BuildProbeOptions() error: an error occurred when building the options for this probe from the config supplied.
 //			-> The options could not be built from the config supplied.
-func (client *CloudproberClient) addProbeFromConfig(ctx context.Context, probePb *configpb.ProbeDef) error {
-	// No mutex locking handled here as this is a private method called by
-	// a public method which handles locking.
-	_, err := client.client.AddProbe(ctx, &proberpb.AddProbeRequest{ProbeConfig: probePb})
-	return err
-}
-
-// RegisterAndAddProbe registers a probe type and adds the probe to Cloudprober to be run.
-// Parameters:
-// - probePb: - This probe config must be unmarshalled before being passed as an argument.
-// Returns:
-// - error:
-//	      - See addProbeFromConfig errors.
-func (client *CloudproberClient) RegisterAndAddProbe(extensionNumber int, ctx context.Context, probePb *configpb.ProbeDef, hermesProbeToAdd cpprobes.Probe) error {
-	client.clientMux.Lock()
-	defer client.clientMux.Unlock()
+func (c *CloudproberClient) RegisterAndAddProbe(extensionNumber int, ctx context.Context, probePb *configpb.ProbeDef, hermesProbeToAdd cpprobes.Probe) error {
+	c.clientMux.Lock()
+	defer c.clientMux.Unlock()
 
 	cpprobes.RegisterProbeType(extensionNumber, func() cpprobes.Probe { return hermesProbeToAdd })
 
 	// Only one extension type per proto config can be registered at any given time.
 	// If more are registered, Cloudprober will throw an error.
-	return client.addProbeFromConfig(ctx, probePb)
+	_, err := c.client.AddProbe(ctx, &proberpb.AddProbeRequest{ProbeConfig: probePb})
+	return err
 }
 
 // RemoveProbe removes a probe from Cloudprober, given the probe name (located in the probe config).
 // An error will be returned if there is no active probe with this probe name.
 // Parameters:
 // - probeName: This must be the name of an active probe in Cloudprober.
+// - ctx: Context used for cancelling RPCs.
 // Returns:
 // - error:
 //	   - Code: 3, InvalidArgument: probeName is an empty string
 //	   - Code: 5,  NotFound: cannot find a probe matching this probe name
-func (client *CloudproberClient) RemoveProbe(probeName string) error {
-	client.clientMux.Lock()
-	defer client.clientMux.Unlock()
+func (c *CloudproberClient) RemoveProbe(probeName string, ctx context.Context) error {
+	c.clientMux.Lock()
+	defer c.clientMux.Unlock()
 
-	_, err := client.client.RemoveProbe(context.Background(), &proberpb.RemoveProbeRequest{ProbeName: &probeName})
+	_, err := c.client.RemoveProbe(ctx, &proberpb.RemoveProbeRequest{ProbeName: &probeName})
 	return err
 }
 
 // ListProbes() returns a list of active probes from Cloudprober.
+// Parameters:
+// - ctx: Context used for cancelling RPCs.
 // Returns:
 // - ListProbesResponse: This is the list of active probes in Cloudprober.
 //			 If this is empty, there are no active probes.
 // - Error:
 //	   - See Cloudprober ListProbes() RPC for details on an error.
-func (client *CloudproberClient) ListProbes() (*proberpb.ListProbesResponse, error) {
-	return client.client.ListProbes(context.Background(), &proberpb.ListProbesRequest{})
+func (c *CloudproberClient) ListProbes(ctx context.Context) (*proberpb.ListProbesResponse, error) {
+	return c.client.ListProbes(ctx, &proberpb.ListProbesRequest{})
 }
