@@ -48,7 +48,7 @@ message HermesProbeResponse {}
 
 // StopMonitoringSystemRequest specifies a target so that Hermes knows which target to stop monitoring.
 message StopMonitoringSystemRequest {
-  Targets targets = 1;
+  repeated TargetDefinition targets = 1;
 }
 // TODO(#29) Add exit status for probe responses.
 message StopMonitoringSystemResponse {}
@@ -58,5 +58,5 @@ message ListMonitoredSystemsRequest {}
 // ListMonitoredSystemsResponse message holds the list of targets returned by ListMonitoredStorageSystems()
 message ListMonitoredSystemsResponse {
   // TODO(#29) Add exit status to probe response.
-  Targets targets = 1;
+  repeated TargetDefinition targets = 1;
 }

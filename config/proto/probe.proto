@@ -31,7 +31,7 @@ option go_package = "github.com/googleinterns/step224-2020/config/proto";
 // All Hermes probes should extend this probe config.
 message HermesProbeDef {
   string probe_name= 1;
-  Targets targets = 2;
+  repeated TargetDefinition targets = 2;
 
   // TargetSystem is expected to be a storage system.
   // It will stay constant until support for new storage systems is added.
@@ -61,8 +61,17 @@ message HermesProbeDef {
   cloudprober.metrics.Dist probe_latency_distribution = 7;  // Measures the latency of Hermes' probes, allowing you to diagnose a network issue or issue with Hermes.
   cloudprober.metrics.Dist api_call_latency_distribution = 8;  // Measures the latency of the API calls for the relevant storage system targeted.
 
-  // Valid values: "ns", "us" (or "µs"), "ms", "s", "m", "h".
-  string latency_unit = 9;  // default is "us"
+  enum latencyUnit {
+    LATENCY_UNIT_UNSPECIFIED = 0;
+    NS = 1;
+    US = 2;
+    MS = 3;
+    S = 4;
+    M = 5;
+    H = 6;
+  }
+  
+  latencyUnit latency_unit = 9;  // default is US
 
   // Additional labels for the probe latency and API call latency distribution metrics.
   // Add as key-value pairs
