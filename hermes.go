@@ -12,17 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-// Author: Evan Spendlove (@evanSpendlove)
-//
 // Main program loop for Hermes. This initialises Cloudprober so that Hermes can
 // interact with it through gRPCs.
 
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
-	"strconv"
 
 	"github.com/golang/glog"
 	"github.com/google/cloudprober"
@@ -31,17 +29,18 @@ import (
 )
 
 var (
-	rpc_port = flag.Int("rpc_port", 9314, "The port that the gRPC server of Cloudprober will run on")
+	rpc_port = flag.Int("rpc_port", 9314, "The port that the gRPC server of Cloudprober will run on.")
 )
 
 func main() {
 	flag.Parse()
 
 	hermes := &hermes.Hermes{}
-	err := hermes.InitialiseCloudproberFromConfig(buildConfig())
-	if err != nil {
+	if err := hermes.InitialiseCloudproberFromConfig(buildConfig()); err != nil {
 		glog.Exitf("cloudprober could not be initialised from config: grpc_port: %d, err:%v", *rpc_port, err)
 	}
+
+	hermes.Ctx, hermes.CancelCloudprober = context.WithCancel(context.Background())
 
 	// Sets up web UI for cloudprober.
 	web.Init()
@@ -56,5 +55,5 @@ func main() {
 // Returns:
 // - string: Returns the configuration details for Cloudprober as a string.
 func buildConfig() string {
-	return fmt.Sprintf("grpc_port: " + strconv.Itoa(*rpc_port))
+	return fmt.Sprintf("grpc_port: %d", *rpc_port)
 }
