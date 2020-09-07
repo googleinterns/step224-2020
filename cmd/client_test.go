@@ -23,8 +23,6 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"sort"
-	"strconv"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -42,38 +40,37 @@ const (
 	testRunCount      int    = 20
 )
 
-func setupCloudproberAndClient(t *testing.T) (*hermes.Hermes, *CloudproberClient) {
+func setupCloudproberAndClient(t *testing.T) (context.Context, *hermes.Hermes, *CloudproberClient) {
 	t.Helper()
 	testHermes := &hermes.Hermes{}
 	if err := testHermes.InitialiseCloudproberFromConfig(cloudproberConfig); err != nil {
 		t.Fatalf("Cloudprober could not be initialised, err: %v", err)
 	}
 
-	testHermes.Ctx, testHermes.CancelCloudprober = context.WithCancel(context.Background())
+	var ctx context.Context
+	ctx, testHermes.CancelCloudprober = context.WithCancel(context.Background())
 
-	cloudprober.Start(testHermes.Ctx)
+	cloudprober.Start(ctx)
 
-	client, errClient := NewClient(rpcServer)
-	if errClient != nil {
-		t.Fatalf("Cloudprober gRPC Client could not be initialised: %v", errClient)
+	client, err := NewClient(rpcServer)
+	if err != nil {
+		t.Fatalf("Cloudprober gRPC Client could not be initialised: %v", err)
 	}
 
-	return testHermes, client
+	return ctx, testHermes, client
 }
 
-func teardownCloudproberAndClient(t *testing.T, testHermes *hermes.Hermes, client *CloudproberClient) {
+func teardownCloudproberAndClient(ctx context.Context, t *testing.T, testHermes *hermes.Hermes, client *CloudproberClient) {
 	// TODO(evanSpendlove): Find a safe way to close down Cloudprober and restart it.
 	// Check if the probe was added correctly
 	t.Helper()
-	listProbesResp, err := client.ListProbes(testHermes.Ctx)
+	probesList, err := client.ListProbes(ctx)
 	if err != nil {
 		t.Errorf("ListProbes() failed, expected error: %v, got: %v\n\n", nil, err)
 	}
 
-	probesList := listProbesResp.GetProbe()
-
 	for _, probe := range probesList {
-		if err := client.RemoveProbe(probe.GetName(), testHermes.Ctx); err != nil {
+		if err = client.RemoveProbe(ctx, probe.GetName()); err != nil {
 			t.Errorf("RemoveProbe() failed, expected error: %v, got %v", nil, err)
 		}
 	}
@@ -101,74 +98,57 @@ func generateRedisProbeDef(name string) *probes_configpb.ProbeDef {
 
 // TestRegisterAndAddProbe tests that an extension probe type can be registered and added to Cloudprober without error.
 func TestRegisterAndAddProbe(t *testing.T) {
-	testHermes, client := setupCloudproberAndClient(t)
-	defer teardownCloudproberAndClient(t, testHermes, client)
+	ctx, testHermes, client := setupCloudproberAndClient(t)
+	defer teardownCloudproberAndClient(ctx, t, testHermes, client)
 
 	for i := 0; i < testRunCount; i++ {
-		probe := fmt.Sprintf("%s%d", "testExtension", i)
-		if err := client.RegisterAndAddProbe(int(myprobe.E_RedisProbe.Field), testHermes.Ctx, generateRedisProbeDef(probe), &myprobe.Probe{}); err != nil {
-			t.Fatalf("Probe not correctly registered and added to Cloudprober, expected error: %v, got: %v", nil, err)
+		probeName := fmt.Sprintf("testExtension%d", i)
+		if err := client.RegisterAndAddProbe(ctx, int(myprobe.E_RedisProbe.Field), generateRedisProbeDef(probeName), &myprobe.Probe{}); err != nil {
+			t.Errorf("Probe not correctly registered and added to Cloudprober, expected error: %v, got: %v", nil, err)
 		}
 
 		// Check if the probe was added correctly
-		listProbesResp, err := client.ListProbes(testHermes.Ctx)
+		probesList, err := client.ListProbes(ctx)
 		if err != nil {
-			t.Fatalf("ListProbes() failed, expected error: %v, got: %v", nil, err)
+			t.Errorf("ListProbes() failed, expected error: %v, got: %v", nil, err)
 		}
 
-		probesList := listProbesResp.GetProbe()
-
-		// Sorts the probes by their extension number as they are in the format:
-		// "testExtension" + <number>, e.g. "testExtension0".
-<<<<<<< HEAD
-		sort.SliceStable(probesList[:], func(i, j int) bool {
-=======
-		sort.Slice(probesList[:], func(i, j int) bool {
->>>>>>> 0c5e62fae339aa27ea4eb49b88891639bdb57909
-			probeNum0, _ := strconv.Atoi(probesList[i].GetName()[13:])
-			probeNum1, _ := strconv.Atoi(probesList[j].GetName()[13:])
-			return probeNum0 < probeNum1
-		})
-
-		if probesList[i].GetName() != probe {
-			t.Errorf("Expected probe %s to be running, got probe %s running", probe, probesList[i].GetName())
+		if probesList[i].GetName() != probeName {
+			t.Errorf("Expected probe %s to be running, got probe %s running", probeName, probesList[i].GetName())
 		}
 	}
 }
 
 // TestRemoveProbe tests that the RemoveProbe() method removes a probe from Cloudprober
 func TestRemoveProbe(t *testing.T) {
-	testHermes, client := setupCloudproberAndClient(t)
-	defer teardownCloudproberAndClient(t, testHermes, client)
+	ctx, testHermes, client := setupCloudproberAndClient(t)
+	defer teardownCloudproberAndClient(ctx, t, testHermes, client)
 
 	for i := 0; i < testRunCount; i++ {
-		probe := fmt.Sprintf("%s%d", "testExtension", i)
-		if err := client.RegisterAndAddProbe(int(myprobe.E_RedisProbe.Field), testHermes.Ctx, generateRedisProbeDef(probe), &myprobe.Probe{}); err != nil {
-			t.Fatalf("Probe not correctly registered and added to Cloudprober, expected error: %v, got: %v", nil, err)
+		probeName := fmt.Sprintf("testExtension%d", i)
+		if err := client.RegisterAndAddProbe(ctx, int(myprobe.E_RedisProbe.Field), generateRedisProbeDef(probeName), &myprobe.Probe{}); err != nil {
+			t.Errorf("Probe not correctly registered and added to Cloudprober, expected error: %v, got: %v", nil, err)
 		}
 
 		// Check if the probe was added correctly
-		listProbesResp, err := client.ListProbes(testHermes.Ctx)
+		probesList, err := client.ListProbes(ctx)
 		if err != nil {
-			t.Fatalf("ListProbes() failed, expected error: %v, got: %v", nil, err)
+			t.Errorf("ListProbes() failed, expected error: %v, got: %v", nil, err)
 		}
 
-		probesList := listProbesResp.GetProbe()
-		if probesList[0].GetName() != probe {
-			t.Errorf("Expected probe %s to be running, got probe %s running", probe, probesList[0].GetName())
+		if probesList[0].GetName() != probeName {
+			t.Errorf("Expected probe %s to be running, got probe %s running", probeName, probesList[0].GetName())
 		}
 
-		if err = client.RemoveProbe(probe, testHermes.Ctx); err != nil {
-			t.Fatalf("RemoveProbe() failed, expected error: %v, got %v", nil, err)
+		if err = client.RemoveProbe(ctx, probeName); err != nil {
+			t.Errorf("RemoveProbe() failed, expected error: %v, got %v", nil, err)
 		}
 
 		// Check if the probe was removed correctly
-		listProbesResp, err = client.ListProbes(testHermes.Ctx)
+		probesList, err = client.ListProbes(ctx)
 		if err != nil {
-			t.Fatalf("ListProbes() failed, expected error: %v, got: %v", nil, err)
+			t.Errorf("ListProbes() failed, expected error: %v, got: %v", nil, err)
 		}
-
-		probesList = listProbesResp.GetProbe()
 
 		if len(probesList) != 0 {
 			t.Errorf("Expected no probes to be running, got %d probes running; active probes running: %v", len(probesList), probesList)
@@ -178,37 +158,34 @@ func TestRemoveProbe(t *testing.T) {
 
 // TestListProbes tests that the ListProbes() method returns all active probes in Cloudprober
 func TestListProbes(t *testing.T) {
-	testHermes, client := setupCloudproberAndClient(t)
-	defer teardownCloudproberAndClient(t, testHermes, client)
+	ctx, testHermes, client := setupCloudproberAndClient(t)
+	defer teardownCloudproberAndClient(ctx, t, testHermes, client)
 
 	for i := 0; i < testRunCount; i++ {
-		probe := fmt.Sprintf("%s%d", "testExtension", i)
-		if err := client.RegisterAndAddProbe(int(myprobe.E_RedisProbe.Field), testHermes.Ctx, generateRedisProbeDef(probe), &myprobe.Probe{}); err != nil {
-			t.Fatalf("Probe not correctly registered and added to Cloudprober, expected error: %v, got: %v", nil, err)
+		probeName := fmt.Sprintf("testExtension%d", i)
+		if err := client.RegisterAndAddProbe(ctx, int(myprobe.E_RedisProbe.Field), generateRedisProbeDef(probeName), &myprobe.Probe{}); err != nil {
+			t.Errorf("Probe not correctly registered and added to Cloudprober, expected error: %v, got: %v", nil, err)
 		}
 
 		// Check if the probe was added correctly
-		listProbesResp, err := client.ListProbes(testHermes.Ctx)
+		probesList, err := client.ListProbes(ctx)
 		if err != nil {
-			t.Fatalf("ListProbes() failed, expected error: %v, got: %v", nil, err)
+			t.Errorf("ListProbes() failed, expected error: %v, got: %v", nil, err)
 		}
 
-		probesList := listProbesResp.GetProbe()
-		if probesList[0].GetName() != probe {
-			t.Errorf("Expected probe %s to be running, got probe %s running", probe, probesList[0].GetName())
+		if probesList[0].GetName() != probeName {
+			t.Errorf("Expected probe %s to be running, got probe %s running", probeName, probesList[0].GetName())
 		}
 
-		if err = client.RemoveProbe(probe, testHermes.Ctx); err != nil {
-			t.Fatalf("RemoveProbe() failed, expected error: %v, got %v", nil, err)
+		if err = client.RemoveProbe(ctx, probeName); err != nil {
+			t.Errorf("RemoveProbe() failed, expected error: %v, got %v", nil, err)
 		}
 
 		// Check if the probe was removed correctly
-		listProbesResp, err = client.ListProbes(testHermes.Ctx)
+		probesList, err = client.ListProbes(ctx)
 		if err != nil {
-			t.Fatalf("ListProbes() failed, expected error: %v, got: %v", nil, err)
+			t.Errorf("ListProbes() failed, expected error: %v, got: %v", nil, err)
 		}
-
-		probesList = listProbesResp.GetProbe()
 
 		if len(probesList) != 0 {
 			t.Errorf("Expected no probes to be running, got %d probes running; active probes running: %v", len(probesList), probesList)

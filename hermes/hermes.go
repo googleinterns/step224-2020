@@ -18,8 +18,6 @@
 package hermes
 
 import (
-	"context"
-
 	"github.com/google/cloudprober"
 )
 
@@ -52,8 +50,10 @@ type Intent struct {
 // The filenames map is a map of file IDs to filenames.
 // If an entry does not exist for a given ID, then the file does not exist (i.e. has been deleted)
 type StateJournal struct {
-	intent    Intent         `json:"intent"`    // intent stores the next intended file operation and the name of the file that the operation is being performed on.
-	filenames map[int]string `json:"filenames"` // filenames is a map of file IDs to filenames.
+	// intent stores the next intended file operation and the name of the file that the operation is being performed on.
+	intent Intent `json:"intent"`
+	// filenames is a map of file IDs to filenames.
+	filenames map[int]string `json:"filenames"`
 }
 
 // Init initialises the map in the StateJournal so that entries can be added to it.
@@ -63,9 +63,10 @@ func (sj *StateJournal) Init() {
 
 // Hermes is the main Hermes prober that will startup Hermes and initiate monitoring targets.
 type Hermes struct {
-	Journal           StateJournal    // stateJournal stores the state of Hermes as a combination of next operation intent and a filenames map
-	Ctx               context.Context // Context for starting Cloudprober
-	CancelCloudprober func()          // CancelCloudprober is a cancel() function associated with the context passed to Cloudprober when initialised.
+	// Journal stores the state of Hermes as a combination of next operation intent and a filenames map
+	Journal StateJournal
+	// CancelCloudprober is a cancel() function associated with the context passed to Cloudprober when initialised.
+	CancelCloudprober func()
 }
 
 // InitialiseCloudproberFromConfig initialises Cloudprober from the config passed as an argument.

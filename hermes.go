@@ -29,7 +29,7 @@ import (
 )
 
 var (
-	rpc_port = flag.Int("rpc_port", 9314, "The port that the gRPC server of Cloudprober will run on.")
+	rpcPort = flag.Int("rpc_port", 9314, "The port that the gRPC server of Cloudprober will run on.")
 )
 
 func main() {
@@ -37,15 +37,15 @@ func main() {
 
 	hermes := &hermes.Hermes{}
 	if err := hermes.InitialiseCloudproberFromConfig(buildConfig()); err != nil {
-		glog.Exitf("cloudprober could not be initialised from config: grpc_port: %d, err:%v", *rpc_port, err)
+		glog.Exitf("cloudprober could not be initialised from config: grpc_port: %d, err:%v", *rpcPort, err)
 	}
 
-	hermes.Ctx, hermes.CancelCloudprober = context.WithCancel(context.Background())
+	ctx, hermes.CancelCloudprober = context.WithCancel(context.Background())
 
 	// Sets up web UI for cloudprober.
 	web.Init()
 
-	cloudprober.Start(hermes.Ctx)
+	cloudprober.Start(ctx)
 
 	// Wait forever
 	select {}
@@ -55,5 +55,5 @@ func main() {
 // Returns:
 // - string: Returns the configuration details for Cloudprober as a string.
 func buildConfig() string {
-	return fmt.Sprintf("grpc_port: %d", *rpc_port)
+	return fmt.Sprintf("grpc_port: %d", *rpcPort)
 }

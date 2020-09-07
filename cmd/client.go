@@ -24,6 +24,8 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"sort"
+	"strconv"
 	"sync"
 
 	"github.com/golang/glog"
@@ -70,9 +72,9 @@ func (c *CloudproberClient) CloseConn() {
 
 // RegisterAndAddProbe registers a probe type and adds the probe to Cloudprober to be run.
 // Parameters:
+// - ctx: Context used for cancelling RPCs.
 // - extensionNumber: The proto extension number from the proto of this probe type.
 // - probePb: This probe config must be unmarshalled before being passed as an argument.
-// - ctx: Context used for cancelling RPCs.
 // - hermesProbeToAdd - An empty probe object of the desired probe type.
 // Returns:
 // TODO(evanSpendlove): Include details of these errors in the error message.
@@ -97,7 +99,7 @@ func (c *CloudproberClient) CloseConn() {
 //			-> There was a problem in the Init() function of the probe type passed.
 //		- options.BuildProbeOptions() error: an error occurred when building the options for this probe from the config supplied.
 //			-> The options could not be built from the config supplied.
-func (c *CloudproberClient) RegisterAndAddProbe(extensionNumber int, ctx context.Context, probePb *configpb.ProbeDef, hermesProbeToAdd cpprobes.Probe) error {
+func (c *CloudproberClient) RegisterAndAddProbe(ctx context.Context, extensionNumber int, probePb *configpb.ProbeDef, hermesProbeToAdd cpprobes.Probe) error {
 	c.clientMux.Lock()
 	defer c.clientMux.Unlock()
 
@@ -112,13 +114,13 @@ func (c *CloudproberClient) RegisterAndAddProbe(extensionNumber int, ctx context
 // RemoveProbe removes a probe from Cloudprober, given the probe name (located in the probe config).
 // An error will be returned if there is no active probe with this probe name.
 // Parameters:
-// - probeName: This must be the name of an active probe in Cloudprober.
 // - ctx: Context used for cancelling RPCs.
+// - probeName: This must be the name of an active probe in Cloudprober.
 // Returns:
 // - error:
 //	   - Code: 3, InvalidArgument: probeName is an empty string
 //	   - Code: 5,  NotFound: cannot find a probe matching this probe name
-func (c *CloudproberClient) RemoveProbe(probeName string, ctx context.Context) error {
+func (c *CloudproberClient) RemoveProbe(ctx context.Context, probeName string) error {
 	c.clientMux.Lock()
 	defer c.clientMux.Unlock()
 
@@ -126,14 +128,29 @@ func (c *CloudproberClient) RemoveProbe(probeName string, ctx context.Context) e
 	return err
 }
 
-// ListProbes() returns a list of active probes from Cloudprober.
+// ListProbes() returns an (stable) sorted array of active probes from Cloudprober.
 // Parameters:
 // - ctx: Context used for cancelling RPCs.
 // Returns:
-// - ListProbesResponse: This is the list of active probes in Cloudprober.
+// - probesList: This is the array of active probes in Cloudprober.
 //			 If this is empty, there are no active probes.
 // - Error:
 //	   - See Cloudprober ListProbes() RPC for details on an error.
-func (c *CloudproberClient) ListProbes(ctx context.Context) (*proberpb.ListProbesResponse, error) {
-	return c.client.ListProbes(ctx, &proberpb.ListProbesRequest{})
+func (c *CloudproberClient) ListProbes(ctx context.Context) ([]*proberpb.Probe, error) {
+	listProbesResp, err := c.client.ListProbes(ctx, &proberpb.ListProbesRequest{})
+	if err != nil {
+		return nil, err
+	}
+
+	probesList := listProbesResp.GetProbe()
+
+	// Sorts the probes by their extension number as they are in the format:
+	// "testExtension" + <number>, e.g. "testExtension0".
+	sort.SliceStable(probesList[:], func(i, j int) bool {
+		probeNum0, _ := strconv.Atoi(probesList[i].GetName()[13:])
+		probeNum1, _ := strconv.Atoi(probesList[j].GetName()[13:])
+		return probeNum0 < probeNum1
+	})
+
+	return probesList, nil
 }

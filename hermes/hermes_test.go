@@ -34,17 +34,17 @@ func TestInitialiseCloudproberFromConfig(t *testing.T) {
 	hermes := &Hermes{}
 
 	if err := hermes.InitialiseCloudproberFromConfig(cfg); err != nil {
-		t.Fatalf("Expected no error from hermes.InitialiseCloudproberFromConfig(), got %v", err)
+		t.Errorf("Expected no error from hermes.InitialiseCloudproberFromConfig(), got %v", err)
 	}
 
-	hermes.Ctx, hermes.CancelCloudprober = context.WithCancel(context.Background())
+	ctx, hermes.CancelCloudprober = context.WithCancel(context.Background())
 	defer hermes.CancelCloudprober()
 
 	// Sets up web UI for cloudprober.
 	web.Init()
 
 	// Start running Cloudprober instance from Hermes context
-	cloudprober.Start(hermes.Ctx)
+	cloudprober.Start(ctx)
 
 	setConfig := cloudprober.GetConfig() // This gets the current config that Cloudprober is running with.
 	if cfg != setConfig {
