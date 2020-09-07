@@ -25,7 +25,7 @@ option go_package = "github.com/googleinterns/step224-2020/config/proto";
 
 // TargetDefinition contains all of the metadata necessary for Hermes to establish a connection to a storage system.
 // Every probe request will require one or more targets.
-message TargetDefinition {
+message Target {
   // TargetSystem is expected to be a storage system.
   // It will stay constant until support for new storage systems is added.
   enum TargetSystem {
@@ -49,6 +49,6 @@ message TargetDefinition {
   // GCS uses service account credentials instead.
   string api_key = 4;
 
-  int64 total_space_allocated = 5;  // in MBs.
+  int64 total_space_allocated_mib = 5;
   string target_url = 6;  // URL for connecting to the the API of the target storage system.
 }
