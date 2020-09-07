@@ -120,11 +120,7 @@ func TestRegisterAndAddProbe(t *testing.T) {
 
 		// Sorts the probes by their extension number as they are in the format:
 		// "testExtension" + <number>, e.g. "testExtension0".
-<<<<<<< HEAD
 		sort.SliceStable(probesList[:], func(i, j int) bool {
-=======
-		sort.Slice(probesList[:], func(i, j int) bool {
->>>>>>> 0c5e62fae339aa27ea4eb49b88891639bdb57909
 			probeNum0, _ := strconv.Atoi(probesList[i].GetName()[13:])
 			probeNum1, _ := strconv.Atoi(probesList[j].GetName()[13:])
 			return probeNum0 < probeNum1
