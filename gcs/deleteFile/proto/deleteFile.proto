@@ -19,7 +19,7 @@
 
 syntax = "proto2";
 
-package gcs.deletefile;
+package hermes.deletefile;
 
 option go_package = "github.com/googleinterns/step224-2020/gcs/deleteFile/proto";
 
