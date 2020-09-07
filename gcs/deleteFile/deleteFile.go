@@ -15,8 +15,13 @@
 // DeleteFile is a probe that deletes a file from GCS.
 // It tests the file deletion aspect of GCS and ensures that the file
 // is deleted after the deletion request is made.
+//
+// TODOs:
+// TODO: Define probe initialisation and run structure.
+// TODO: Setup labels and metrics within probe
+// TODO: Add handling of additional labels
 
-package gcs.deletefile
+package gcsDelete
 
 import (
 	"context"
@@ -45,11 +50,11 @@ type Probe struct {
 
 // Init initializes the probe with the given params.
 func (p *Probe) Init(name string, opts *options.Options) error {
-	config, ok := opts.ProbeConf.(*ProbeConf)
+	c, ok := opts.ProbeConf.(*ProbeConf)
 	if !ok {
 		return fmt.Errorf("not a gcs.deleteFile config")
 	}
-	p.c = config 
+	p.config = c
 	p.name = name
 	p.opts = opts
 	p.l = opts.Logger
@@ -111,19 +116,38 @@ func (p *Probe) initProbeMetrics() {
 // TODO: Investigate getting credentials for multiple GCS instances.
 // runProbeForTarget runs probe for a single target.
 func (p *Probe) runProbeForTarget(ctx context.Context, target string) error {
+
+	// Algorithm
+	// List objects, pick one, delete it.
+	// Check for errors (does GCS throw them?) -- YES.
 	bucket := p.c.GetBucket()
-	object := p.c.GetObject()
 
-        client, err := storage.NewClient(ctx)
-        if err != nil {
-                return fmt.Errorf("storage.NewClient: %v", err)
-        }
-        defer client.Close()
+	client, err := storage.NewClient(ctx)
+	if err != nil {
+		return fmt.Errorf("storage.NewClient: %v", err)
+	}
+	defer client.Close()
 
-        o := client.Bucket(bucket).Object(object)
-        if err := o.Delete(ctx); err != nil {
-                return fmt.Errorf("Object(%q).Delete: %v", object, err)
-        }
+	// First, list objects
+	var names []string
+	iterator := bkt.Objects(ctx, &storage.Query{Prefix: ""})
+	for {
+		attrs, err := it.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			p.logger.Error(err)
+		}
+		names = append(names, attrs.Name)
+	}
+
+	// Then, pick one to delete.
+
+	o := client.Bucket(bucket).Object(object)
+	if err := o.Delete(ctx); err != nil {
+		return fmt.Errorf("Object(%q).Delete: %v", object, err)
+	}
 
 	glog.Infof("Object %v deleted in bucket %s.", o, bucket)
 	return nil
