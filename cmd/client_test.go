@@ -113,6 +113,7 @@ func TestRegisterAndAddProbe(t *testing.T) {
 			t.Errorf("ListProbes() failed, expected error: %v, got: %v", nil, err)
 		}
 
+<<<<<<< HEAD
 		if probesList[i].GetName() != probeName {
 			t.Errorf("Expected probe %s to be running, got probe %s running", probeName, probesList[i].GetName())
 		}
