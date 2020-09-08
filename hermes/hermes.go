@@ -18,11 +18,11 @@
 package hermes
 
 import (
-	"github.com/googleinterns/step224-2020/hermes/proto"
+	pb "github.com/googleinterns/step224-2020/hermes/proto"
 )
 
 // Hermes is the main prober struct. It contains the monitoring state and is used when monitoring target systems.
 type Hermes struct {
 	// Journal stores the state of Hermes as a combination of a next operation intent enum and a filenames map
-	Journal *StateJournal
+	Journal *pb.StateJournal
 }

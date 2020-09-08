@@ -16,7 +16,7 @@
 
 syntax = "proto3";
 
-package hermes;
+package hermes.proto;
 
 option go_package = "github.com/googleinterns/step224-2020/hermes/proto";
 
