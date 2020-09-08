@@ -25,7 +25,6 @@ import (
 	"github.com/golang/glog"
 	"github.com/google/cloudprober"
 	"github.com/google/cloudprober/web"
-	"github.com/googleinterns/step224-2020/hermes"
 )
 
 var (
@@ -35,17 +34,14 @@ var (
 func main() {
 	flag.Parse()
 
-	hermes := &hermes.Hermes{}
-	if err := hermes.InitialiseCloudproberFromConfig(buildConfig()); err != nil {
+	if err := cloudprober.InitFromConfig(buildConfig()); err != nil {
 		glog.Exitf("cloudprober could not be initialised from config: grpc_port: %d, err:%v", *rpcPort, err)
 	}
-
-	ctx := context.Background()
 
 	// Sets up web UI for cloudprober.
 	web.Init()
 
-	cloudprober.Start(ctx)
+	cloudprober.Start(context.Background())
 
 	// Wait forever
 	select {}

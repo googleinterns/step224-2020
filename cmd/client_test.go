@@ -47,16 +47,14 @@ func setupCloudproberAndClient(t *testing.T) (context.Context, *hermes.Hermes, *
 		t.Fatalf("Cloudprober could not be initialised, err: %v", err)
 	}
 
-	ctx := context.Background()
-
-	cloudprober.Start(ctx)
+	cloudprober.Start(context.Background())
 
 	client, err := NewClient(rpcServer)
 	if err != nil {
 		t.Fatalf("Cloudprober gRPC Client could not be initialised: %v", err)
 	}
 
-	return ctx, testHermes, client
+	return context.Background(), testHermes, client
 }
 
 func teardownCloudproberAndClient(ctx context.Context, t *testing.T, testHermes *hermes.Hermes, client *CloudproberClient) {

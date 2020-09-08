@@ -147,8 +147,8 @@ func (c *CloudproberClient) ListProbes(ctx context.Context) ([]*proberpb.Probe, 
 	// Sorts the probes by their extension number as they are in the format:
 	// "testExtension" + <number>, e.g. "testExtension0".
 	sort.SliceStable(probesList[:], func(i, j int) bool {
-		probeNum0, _ := strconv.Atoi(probesList[i].GetName()[13:]) // 13 because there are 13 characters in "testExtension" and we want the int ID.
-		probeNum1, _ := strconv.Atoi(probesList[j].GetName()[13:])
+		probeNum0, _ := strconv.Atoi(probesList[i].GetName()[len("testExtension"):])
+		probeNum1, _ := strconv.Atoi(probesList[j].GetName()[len("testExtension"):])
 		return probeNum0 < probeNum1
 	})
 
