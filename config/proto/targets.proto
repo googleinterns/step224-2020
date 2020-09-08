@@ -12,9 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-// Author: Evan Spendlove (@evanSpendlove)
-//
-//  The Targets proto defines the config for a Target.
+//  Targets defines the config for a Target.
 //  Targets are used by Hermes and Cloudprober to identify storage systems to monitor.
 
 syntax = "proto3";
@@ -25,7 +23,7 @@ option go_package = "github.com/googleinterns/step224-2020/config/proto";
 
 // TargetDefinition contains all of the metadata necessary for Hermes to establish a connection to a storage system.
 // Every probe request will require one or more targets.
-message TargetDefinition {
+message Target {
   // TargetSystem is expected to be a storage system.
   // It will stay constant until support for new storage systems is added.
   enum TargetSystem {
@@ -40,24 +38,15 @@ message TargetDefinition {
 
   TargetSystem target_system = 1;
   ConnectionType connection_type = 2;
-  ConnectionDetails connection_details = 3;
-  string target_url = 5;  // URL for connecting to the the API of the target storage system.
-  int64 total_space_allocated = 4;  // in MBs.
-}
 
-// REQUIRED, when using Ceph as the target system.
-// Comparable functionality is handled in the Go client library for GCS.
-message ConnectionDetails {
   // REQUIRED for Ceph S3 API
   // Port for connecting to Ceph S3 API
-  int32 port = 1;
+  int32 port = 3;
 
   // REQUIRED for Ceph S3 API
   // GCS uses service account credentials instead.
-  string api_key = 2;
-}
+  string api_key = 4;
 
-// Targets allows the user to define multiple targets.
-message Targets {
-  repeated TargetDefinition targets = 1;
+  int64 total_space_allocated_mib = 5;
+  string target_url = 6;  // URL for connecting to the the API of the target storage system.
 }
