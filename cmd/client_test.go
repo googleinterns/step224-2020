@@ -43,12 +43,11 @@ const (
 func setupCloudproberAndClient(t *testing.T) (context.Context, *hermes.Hermes, *CloudproberClient) {
 	t.Helper()
 	testHermes := &hermes.Hermes{}
-	if err := testHermes.InitialiseCloudproberFromConfig(cloudproberConfig); err != nil {
+	if err := cloudprober.InitFromConfig(cloudproberConfig); err != nil {
 		t.Fatalf("Cloudprober could not be initialised, err: %v", err)
 	}
 
-	var ctx context.Context
-	ctx, testHermes.CancelCloudprober = context.WithCancel(context.Background())
+	ctx := context.Background()
 
 	cloudprober.Start(ctx)
 
@@ -66,7 +65,7 @@ func teardownCloudproberAndClient(ctx context.Context, t *testing.T, testHermes 
 	t.Helper()
 	probesList, err := client.ListProbes(ctx)
 	if err != nil {
-		t.Errorf("ListProbes() failed, expected error: %v, got: %v\n\n", nil, err)
+		t.Fatalf("ListProbes() failed, expected error: %v, got: %v\n\n", nil, err)
 	}
 
 	for _, probe := range probesList {

@@ -33,12 +33,11 @@ const cfg = "grpc_port:9314"
 func TestInitialiseCloudproberFromConfig(t *testing.T) {
 	hermes := &Hermes{}
 
-	if err := hermes.InitialiseCloudproberFromConfig(cfg); err != nil {
+	if err := cloudprober.InitFromConfig(cfg); err != nil {
 		t.Errorf("Expected no error from hermes.InitialiseCloudproberFromConfig(), got %v", err)
 	}
 
-	ctx, hermes.CancelCloudprober = context.WithCancel(context.Background())
-	defer hermes.CancelCloudprober()
+	ctx := context.Background()
 
 	// Sets up web UI for cloudprober.
 	web.Init()

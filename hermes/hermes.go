@@ -17,14 +17,10 @@
 
 package hermes
 
-import (
-	"github.com/google/cloudprober"
-)
-
-// FileOperation is an int used as part of the FileOperation enum within the intent log of Hermes' StateJournal.
+// FileOperation is used as part of the FileOperation enum within the intent log of Hermes' StateJournal.
 type FileOperation int
 
-// FileOperation enum is used for marking the operation intent within the StateJournal of Hermes.
+// FileOperation is used for marking the operation intent within the StateJournal of Hermes.
 // FileOperation has two possible values: CREATE, DELETE.
 const (
 	Create FileOperation = iota
@@ -35,10 +31,15 @@ const (
 // Returns:
 // - string: Returns the print-friendly string version of the fileOperation enum.
 func (fileOperation FileOperation) String() string {
-	return [...]string{"Create", "Delete"}[fileOperation]
+	var FileOperationName = map[FileOperation]string{
+		Create: "Create",
+		Delete: "Delete",
+	}
+
+	return FileOperationName[fileOperation]
 }
 
-// Intent stores the next intended file operation of Hermes.
+// Intent stores the next intended file operation.
 // This is used as part of the StateJournal of Hermes.
 type Intent struct {
 	operation FileOperation `json:"fileoperation"` // Stores the file operation intent, either CREATE or DELETE
@@ -56,40 +57,12 @@ type StateJournal struct {
 	filenames map[int]string `json:"filenames"`
 }
 
-// Init initialises the map in the StateJournal so that entries can be added to it.
 func (sj *StateJournal) Init() {
-	sj.filenames = make(map[int]string) // initialise filenames to a map
+	sj.filenames = make(map[int]string)
 }
 
 // Hermes is the main Hermes prober that will startup Hermes and initiate monitoring targets.
 type Hermes struct {
 	// Journal stores the state of Hermes as a combination of next operation intent and a filenames map
 	Journal StateJournal
-	// CancelCloudprober is a cancel() function associated with the context passed to Cloudprober when initialised.
-	CancelCloudprober func()
-}
-
-// InitialiseCloudproberFromConfig initialises Cloudprober from the config passed as an argument.
-// Parameters:
-// - config: config should be the contents of a Cloudprober config file. This is most likely: "grpc_port=9314"
-//           -> the "grpc_port:" field is the only required field for the config.
-// Returns:
-// - error:
-//	- logger.NewCloudproberLog() error: error initialising logging on GCE (Stackdriver)
-//	- sysvars.Init():
-//		- error getting local hostname: [error]:
-//			-> error getting hostname from os.Hostname()
-//		- other error
-//			-> error initialising Cloud metadata
-//	- config.ParseTemplate() error:
-//		-> regex compilation issue of config or config could not be processed as a Go text template
-//	- proto.UnmarshalText() error:
-//		-> The config does not match the proto that it is being unmarshalled with.
-//	- initDefaultServer() error:
-//		- failed to parse default port from the env var: [serverEnvVar]=[parsedPort]
-//		- error while creating listener for default HTTP server: [error]
-//	- error while creating listener for default gRPC server: [error]
-//	- tlsconfig.UpdateTLSConfig() error: an error occurred when updating the TLS config from the config passed.
-func (h *Hermes) InitialiseCloudproberFromConfig(config string) error {
-	return cloudprober.InitFromConfig(config)
 }

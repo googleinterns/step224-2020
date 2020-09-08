@@ -128,7 +128,7 @@ func (c *CloudproberClient) RemoveProbe(ctx context.Context, probeName string) e
 	return err
 }
 
-// ListProbes() returns an (stable) sorted array of active probes from Cloudprober.
+// ListProbes() returns a (stable) sorted array of active probes from Cloudprober.
 // Parameters:
 // - ctx: Context used for cancelling RPCs.
 // Returns:
@@ -147,7 +147,7 @@ func (c *CloudproberClient) ListProbes(ctx context.Context) ([]*proberpb.Probe, 
 	// Sorts the probes by their extension number as they are in the format:
 	// "testExtension" + <number>, e.g. "testExtension0".
 	sort.SliceStable(probesList[:], func(i, j int) bool {
-		probeNum0, _ := strconv.Atoi(probesList[i].GetName()[13:])
+		probeNum0, _ := strconv.Atoi(probesList[i].GetName()[13:]) // 13 because there are 13 characters in "testExtension" and we want the int ID.
 		probeNum1, _ := strconv.Atoi(probesList[j].GetName()[13:])
 		return probeNum0 < probeNum1
 	})

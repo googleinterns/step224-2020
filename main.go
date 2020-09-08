@@ -40,7 +40,7 @@ func main() {
 		glog.Exitf("cloudprober could not be initialised from config: grpc_port: %d, err:%v", *rpcPort, err)
 	}
 
-	ctx, hermes.CancelCloudprober = context.WithCancel(context.Background())
+	ctx := context.Background()
 
 	// Sets up web UI for cloudprober.
 	web.Init()
