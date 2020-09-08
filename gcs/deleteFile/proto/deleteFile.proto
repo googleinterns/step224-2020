@@ -19,7 +19,7 @@
 
 syntax = "proto2";
 
-package hermes.deletefile;
+package hermes.delete_file;
 
 option go_package = "github.com/googleinterns/step224-2020/gcs/deleteFile/proto";
 
@@ -38,10 +38,6 @@ message DeleteFileProbe {
   // REQUIRED
   // The name of the bucket that contains the object to be deleted.
   optional string bucketName = 2;  
-
-  // REQUIRED
-  // The name of the object to be deleted.
-  optional string objectName = 3;
 
   // Must extend ProbeDef so this probe can be added to Cloudprober as an
   // extension.
