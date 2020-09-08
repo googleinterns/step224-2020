@@ -34,14 +34,14 @@ import (
 	"github.com/google/cloudprober/metrics"
 	"github.com/google/cloudprober/probes/options"
 
-	deletepb "github.com/googleinterns/step224-2020/gcs/deleteFile/proto"
+	pb "github.com/googleinterns/step224-2020/gcs/deleteFile/proto"
 )
 
-// Probe holds aggregate information about all probe runs, per-target.
+// DeleteFileProbe holds aggregate information about all probe runs, per-target.
 // It also holds the config and options used to initialise the probe.
-type Probe struct {
+type DeleteFileProbe struct {
 	name    string
-	config  *deletepb.DeleteFileProbe
+	config  *pb.DeleteFileProbe
 	targets []string
 	opts    *options.Options
 
@@ -50,14 +50,24 @@ type Probe struct {
 	probeOpLatency map[string]*metrics.EventMetrics
 	// apiCallLatency is used to record latency values with distinct labels
 	// per API call per target.
-	// Usage: (map[target]map[apiCall][]metric).
+	// Recommended usage: append(apiCallLatency[target][apiCall], newMetric)
 	apiCallLatency map[string]map[string][]*metric.EventMetrics
 	logger         *logger.Logger
 
-	bucket string
-	// CancelFunc cancels this probe and its goroutines.
-	// If this probe needs to be cancelled immediately, call CancelFunc().
-	CancelFunc context.CancelFunc
+	bucket     string
+	cancelFunc context.CancelFunc
+}
+
+// CancelProbe cancels this probe and its goroutines.
+// If this probe needs to be cancelled immediately, call CancelProbe().
+func CancelProbe() {
+	cancelFunc()
+}
+
+// NewDeleteFileProbe returns an empty DeleteFileProbe struct.
+// This should be used when adding this probe to Cloudprober.
+func NewDeleteFileProbe() *DeleteFileProbe {
+	return &DeleteFileProbe{}
 }
 
 // Init initializes the probe with the given parameters.
@@ -68,10 +78,10 @@ type Probe struct {
 //	- opts: probe configuration options built within Cloudprober
 // Return:
 //	- error: if an error is returned, the config is not a valid delete_file config.
-func (p *Probe) Init(name string, opts *options.Options) error {
-	conf, ok := opts.ProbeConf.(*deletepb.DeleteFileProbe) // Casting ProbeConf interface to DeleteFileProbe type
+func (p *DeleteFileProbe) Init(name string, opts *options.Options) error {
+	conf, ok := opts.ProbeConf.(*pb.DeleteFileProbe) // Casting ProbeConf interface to DeleteFileProbe type
 	if !ok {
-		return fmt.Errorf("invalid argument: opts.ProbeConf is not of type *deletepb.DeleteFileProbe.")
+		return fmt.Errorf("invalid argument: opts.ProbeConf is not of type *deletepb.DeleteFileProbe")
 	}
 	p.config = conf
 	p.name = name

@@ -12,14 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-// Author: Evan Spendlove (@evanSpendlove)
-//
 // The DeleteFileProbe proto describes the information necessary for a probe to delete a
 // file in GCS.
 
 syntax = "proto2";
 
-package hermes.delete_file;
+package gcs.deletefile;
 
 option go_package = "github.com/googleinterns/step224-2020/gcs/deleteFile/proto";
 
