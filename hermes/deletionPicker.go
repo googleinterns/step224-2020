@@ -19,7 +19,7 @@ import (
 	"time"
 )
 
-// Picks which file to delete and returns a string - file name of the form "Hermes_dd" 
+// PickFileToDelete picks which file to delete and returns a string: file name in the form "Hermes_ID".
 func PickFileToDelete() string {
 	rand.Seed(time.Now().UnixNano())
 	file_id := rand.Intn(40) + 10;
