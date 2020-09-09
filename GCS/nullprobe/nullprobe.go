@@ -30,7 +30,7 @@ type HermesProbe struct {
 func (p *HermesProbe) Init(name string, opts *options.Options) error {
 	p.conf, ok := opts.ProbeConf.(*ProbeConf)
 	if !ok {
-		return fmt.Errorf("Invalid Hermes probe configuration")
+		return fmt.Errorf("Invalid argument: type of opts.ProbeConf does not match *ProbeConf")
 	}
 	p.name = name
 	p.opts = opts
