@@ -19,7 +19,8 @@
 // TODO(#38): Add support for secure connection to RPC server with credentials, if supported by Cloudprober.
 // TODO(evanSpendlove): Include details of these errors (addProbeFromConfig method) in the error message.
 
-package cmd
+// Client contains the gRPC client implementation used to send RPCs to Cloudprober.
+package client
 
 import (
 	"context"

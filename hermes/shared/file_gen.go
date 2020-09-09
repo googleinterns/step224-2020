@@ -7,11 +7,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-// Author: Alicja Kwiecinska (kwiecinskaa@google.com) github: alicjakwie
-
+//
 // File generation for Hermes
-package hermes
+package shared
 
 import (
 	"crypto/sha1"

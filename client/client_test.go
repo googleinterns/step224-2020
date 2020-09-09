@@ -18,7 +18,7 @@
 // TODO(evanSpendlove): Find a safe way to close down Cloudprober and restart it.
 // TODO(evanSpendlove): Replace this test with a test using a Hermes probe definition
 
-package cmd
+package client
 
 import (
 	"context"
