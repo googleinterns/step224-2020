@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
+// Author: Evan Spendlove, GitHub: @evanSpendlove.
+//
 //  Service defines the service-level config for Hermes.
 //  This is also the external service API for Hermes.
 

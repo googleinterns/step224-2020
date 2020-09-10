@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
+// Author: Evan Spendlove, GitHub: @evanSpendlove.
+//
 // hermes.go defines the structures necessary for the main hermes object to
 // monitor a storage system.
 

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-// Author: Evan Spendlove (@evanSpendlove)
+// Author: Evan Spendlove, GitHub: @evanSpendlove.
 //
 //  The Targets proto defines the config for a Target.
 //  Targets are used by Hermes and Cloudprober to identify storage systems to monitor.

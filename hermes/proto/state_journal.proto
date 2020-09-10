@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
+// Author: Evan Spendlove, GitHub: @evanSpendlove.
+//
 // state_journal defines the structure that stores the state of Hermes.
 
 syntax = "proto3";
