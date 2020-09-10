@@ -49,5 +49,5 @@ message Target {
 
   int64 total_space_allocated_mib = 5;
   string target_url = 6;  // URL for connecting to the the API of the target storage system.
-  string hermes_bucket_name = 7; // Name for bucket used by Hermes on this target storage system.
+  string hermes_bucket_name = 7;  // Name for bucket used by Hermes on this target storage system.
 }
