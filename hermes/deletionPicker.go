@@ -31,6 +31,6 @@ const (
 // PickFileToDelete picks which file to delete and returns a string: file name in the form "Hermes_ID".
 func PickFileToDelete() string {
 	rand.Seed(time.Now().UnixNano())
-	fileID := rand.Intn(numberOfDeletableFiles) + beg // rand.Intn will return a natural number in the range [0, number_of_deletable_files) so fileID will be in the range [beg, number_of_deletable_files)
+	fileID := rand.Intn(numberOfDeletableFiles) + beg // rand.Intn will return a natural number in the range [0, numberOfDeletableFiles) so fileID will be in the range [beg, numberOfDeletableFiles)
 	return fmt.Sprintf("Hermes_%02d", fileID)
 }
