@@ -44,25 +44,14 @@ message HermesProbeDef {
   // Probes will not retry, they will fail if they timeout.
   optional int32 timeout_sec = 5;  // Timeout in seconds, default = 60
 
-  // If specified, latency is stored as a distribution
+  // If specified, latency is stored as a distribution metric.
   // Measures the latency of Hermes' probes, allowing you to diagnose a network issue or issue with Hermes.
+  // The measurement unit of latency will be seconds.
   optional cloudprober.metrics.Dist probe_latency_distribution = 6;  
 
   // Measures the latency of the API calls for the relevant storage system targeted.
+  // The measurement unit of latency will be seconds.
   optional cloudprober.metrics.Dist api_call_latency_distribution = 7;  
-
-  // Unit for latency distribution metrics.
-  enum LatencyUnit {
-    LATENCY_UNIT_UNSPECIFIED = 0;
-    NANOSECOND = 1;
-    MICROSECOND = 2;
-    MILLISECOND = 3;
-    SECOND = 4;
-    MINUTE = 5;
-    HOUR = 6;
-  }
-  
-  optional LatencyUnit latency_unit = 8;  // default is SECOND
 
   // Additional labels for the probe latency and API call latency distribution metrics.
   // Add as key-value pairs
