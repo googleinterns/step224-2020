@@ -35,13 +35,12 @@ message HermesProbeDef {
   enum TargetSystem {
     TARGET_SYSTEM_UNSPECIFIED = 0;
     GCS = 1;
-    CEPH = 2;
   }
 
   optional TargetSystem target_system = 3;
 
-  optional int32 interval_sec = 4;  // Probing interval in seconds, default = 3600
-
+  // Probing interval in seconds, default = 3600
+  optional int32 interval_sec = 4;  
   // Probes will not retry, they will fail if they timeout.
   optional int32 timeout_sec = 5;  // Timeout in seconds, default = 60
 
@@ -52,6 +51,7 @@ message HermesProbeDef {
   // Measures the latency of the API calls for the relevant storage system targeted.
   optional cloudprober.metrics.Dist api_call_latency_distribution = 7;  
 
+  // Unit for latency distribution metrics.
   enum LatencyUnit {
     LATENCY_UNIT_UNSPECIFIED = 0;
     NANOSECOND = 1;
@@ -62,7 +62,7 @@ message HermesProbeDef {
     HOUR = 6;
   }
   
-  optional LatencyUnit latency_unit = 8;  // default is MICROSECOND
+  optional LatencyUnit latency_unit = 8;  // default is SECOND
 
   // Additional labels for the probe latency and API call latency distribution metrics.
   // Add as key-value pairs
