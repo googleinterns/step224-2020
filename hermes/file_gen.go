@@ -16,6 +16,7 @@ package hermes
 import (
 	"crypto/sha1"
 	"fmt"
+	"time"
 )
 
 type HermesFile struct {
@@ -23,14 +24,13 @@ type HermesFile struct {
 	contents string
 }
 
-// method of HermesFile generates HermesFile.name of the form Hermes_id_checksum where id is an integer & id <= 50
-func (file *HermesFile) generateFileName(file_id int, file_checksum string) {
-	file.name = fmt.Sprintf("Hermes_%02d_%v", file_id, file_checksum)
+// generateFileName generates HermesFile.name of the form Hermes_id_checksum where id is an integer & id <= 50
+func generateFileName(file_id int, file_checksum string) string {
+	return fmt.Sprintf("Hermes_%02d_%v", file_id, file_checksum)
 }
 
-// method of HermesFile generates HermesFile.contents now a string without any significance in the future a pseudo random byte generator will be used
-func (file *HermesFile) generateFileContents(file_id int) {
-	file.contents = "jhfvjhdfjhfjjhjhdfvjvcvfjh"
+func generateFileContents(file_id int) string {
+	return "jhfvjhdfjhfjjhjhdfvjvcvfjh"
 }
 
 // method of HermesFile generates the checksum of the file contents
@@ -42,10 +42,13 @@ func (file HermesFile) generateFileChecksum() string {
 }
 
 // method of HermesFile generates the file takes id as a parameter
-func GenerateHermesFile(id int) HermesFile {
+func NewHermesFile(id int) (*HermesFile, error) {
+	if id < 0 || id > 50 {
+		return nil, fmt.Errorf("At %v The file id provided wasn't in the required range [0,50]", time.Now())
+	}
 	file := HermesFile{}
-	file.generateFileContents(id)
+	file.contents = generateFileContents(id)
 	checksum := file.generateFileChecksum()
-	file.generateFileName(id, checksum)
-	return file
+	file.name = generateFileName(id, checksum)
+	return &file, nil
 }
