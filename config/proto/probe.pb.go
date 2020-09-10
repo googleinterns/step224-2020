@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-// Author: Evan Spendlove (@evanSpendlove)
+// Author: Evan Spendlove, espendlove@google.com, GitHub: evanSpendlove.
 //
 //  This proto defines the probe interface for Hermes probes.
 //  It is used in a variety of other files as it is the top-level probe interface.

@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
+// Author: Evan Spendlove, espendlove@google.com, GitHub: evanSpendlove.
+//
 // Client.go creates the client for connecting to, and making requests to, the
 // gRPC server of Cloudprober.
 //

@@ -1,49 +1,70 @@
-// Licensed under the Apache License, Version 2.0 (the "License")
+// Copyright 2020 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-//     http://www.apache.org/licenses/LICENSE-2.0
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-// File generation for Hermes
-package shared
+// Author: Alicja Kwiecinska (kwiecinskaa@google.com) github: alicjakwie
+//
+// File_gen provides file generation methods for Hermes.
+
+// Package hermes is the general package for methods and function used within Hermes.
+package hermes
 
 import (
 	"crypto/sha1"
 	"fmt"
 )
 
+// HermesFile represents a file that Hermes will create on the storage system.
 type HermesFile struct {
 	name     string
 	contents string
 }
 
-// method of HermesFile generates HermesFile.name of the form Hermes_id_checksum where id is an integer & id <= 50
-func (file *HermesFile) generateFileName(file_id int, file_checksum string) {
-	file.name = fmt.Sprintf("Hermes_%02d_%v", file_id, file_checksum)
+// generateFileName generates name of the form Hermes_ID_checksum.
+// where ID is an integer & ID <= 49 & ID >= 0.
+// Arguments:
+//	- fileID: ID must be >= 0 and <= 49.
+//	- fileChecksum: checksum must be a SHA1 checksum in hex notation.
+func (f *HermesFile) generateFileName(fileID int, fileChecksum string) {
+	f.name = fmt.Sprintf("Hermes_%02d_%v", fileID, fileChecksum)
 }
 
-// method of HermesFile generates HermesFile.contents now a string without any significance in the future a pseudo random byte generator will be used
-func (file *HermesFile) generateFileContents(file_id int) {
-	file.contents = "jhfvjhdfjhfjjhjhdfvjvcvfjh"
+// generateFileContents generates the contents of a file.
+// TODO(alicjakwie): Use a pseudo-random number generator instead.
+// Arguments:
+//	- fileID: the ID of the file. Must be between 0 and 49.
+func (f *HermesFile) generateFileContents(fileID int) {
+	f.contents = "jhfvjhdfjhfjjhjhdfvjvcvfjh"
 }
 
-// method of HermesFile generates the checksum of the file contents
-func (file HermesFile) generateFileChecksum() string {
-	file_contents := []byte(file.contents)
-	hash := sha1.Sum(file_contents)
+// generateFileChecksum generates the checksum of the file contents.
+// Returns:
+//	- checksum: Returns the checksum of the file contents in hex notation.
+func (f *HermesFile) generateFileChecksum() string {
+	fileContents := []byte(f.contents)
+	hash := sha1.Sum(fileContents)
 	// return checksum in hex notation
 	return fmt.Sprintf("%x", hash)
 }
 
-// method of HermesFile generates the file takes id as a parameter
+// GenerateHermesFile generates a HermesFile object with a valid file name and contents.
+// Arguments:
+//	- id: id must be >= 0 and <= 49.
+// Returns:
+//	- HermesFile: returns a HermesFile object with a valid file name and contents.
 func GenerateHermesFile(id int) HermesFile {
 	file := HermesFile{}
 	file.generateFileContents(id)
-	checksum := file.generateFileChecksum()
-	file.generateFileName(id, checksum)
+	file.generateFileName(id, file.generateFileChecksum())
 	return file
 }
