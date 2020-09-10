@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
+// Author: Evan Spendlove, GitHub: @evanSpendlove.
+//
 // Main program loop for Hermes. This initialises Cloudprober so that Hermes can
 // interact with it through gRPCs.
 

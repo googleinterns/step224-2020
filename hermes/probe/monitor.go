@@ -12,19 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-// Author: Evan Spendlove, GitHub: @evanSpendlove.
-//
-// hermes.go defines the structures necessary for the main hermes object to
-// monitor a storage system.
+// Monitor implements a probe that monitors a storage system using the
+// Hermes algorithm.
 
-package hermes
-
-import (
-	pb "github.com/googleinterns/step224-2020/hermes/proto"
-)
-
-// Hermes is the main prober struct. It contains the monitoring state and is used when monitoring target systems.
-type Hermes struct {
-	// Journal stores the state of Hermes as a combination of a next operation intent enum and a filenames map
-	Journal *pb.StateJournal
-}
+// MonitorProbe holds aggregate information about all probe runs, per-target.
+// It also holds the config and options used to initialise the probe.
+type MonitorProbe struct{}

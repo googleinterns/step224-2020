@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
+// Author: Evan Spendlove, GitHub: @evanSpendlove.
+//
 // Client.go creates the client for connecting to, and making requests to, the
 // gRPC server of Cloudprober.
 //
@@ -19,7 +21,8 @@
 // TODO(#38): Add support for secure connection to RPC server with credentials, if supported by Cloudprober.
 // TODO(evanSpendlove): Include details of these errors (addProbeFromConfig method) in the error message.
 
-package cmd
+// Client contains the gRPC client implementation used to send RPCs to Cloudprober.
+package client
 
 import (
 	"context"

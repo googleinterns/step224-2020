@@ -13,10 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Author: Evan Spendlove (@evanSpendlove)
+# Author: Evan Spendlove, GitHub: @evanSpendlove.
 #
 # This script runs all of tests in the project and compiles all of the proto
-# files
+# files.
 
 # Compile all protos
 cd $HOME/go/src
