@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	beg                    = 10 // we can delete files staring from the file Hermes_10
+	begin                    = 10 // we can delete files staring from the file Hermes_10
 	numberOfDeletableFiles = 41 // there are 41 files to delete from [Hermes_10,Hermes_50]
 )
 
