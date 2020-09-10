@@ -10,7 +10,7 @@
 
 // Author: Alicja Kwiecinska (kwiecinskaa@google.com) github: alicjakwie
 
-// Picks what file from 10 to 50 (files 0-9 are kept in the system for persistence) to delete
+// DeletionPicker picks what file from 10 to 50 (files 0-9 are kept in the system for persistence) to delete
 package hermes
 
 import (
