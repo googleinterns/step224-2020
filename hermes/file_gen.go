@@ -44,7 +44,7 @@ func (file HermesFile) generateFileChecksum() string {
 // method of HermesFile generates the file takes id as a parameter
 func NewHermesFile(id int) (*HermesFile, error) {
 	if id < 0 || id > 50 {
-		return nil, fmt.Errorf("At %v The file id provided wasn't in the required range [0,50]", time.Now())
+		return nil, fmt.Errorf("At %v the file ID provided wasn't in the required range [0,50]", time.Now())
 	}
 	file := HermesFile{}
 	file.contents = generateFileContents(id)
