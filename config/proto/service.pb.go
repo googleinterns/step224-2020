@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-// Author: Evan Spendlove, espendlove@google.com, GitHub: evanSpendlove.
+// Author: Evan Spendlove, GitHub: @evanSpendlove.
 //
 //  This proto defines the service-level config for Hermes.
 //  This is also the external service API for Hermes.

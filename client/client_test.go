@@ -10,7 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-// Author: Evan Spendlove, espendlove@google.com, GitHub: evanSpendlove.
+// Author: Evan Spendlove, GitHub: @evanSpendlove.
 //
 // Client_test tests the client.go file to ensure that the gRPC client for connecting
 // to Cloudprober works as expected. This client is used for adding and removing probes.

@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Author: Evan Spendlove, espendlove@google.com, GitHub: evanSpendlove.
+# Author: Evan Spendlove, GitHub: @evanSpendlove.
 #
 # This script runs all of tests in the project and compiles all of the proto
 # files.
