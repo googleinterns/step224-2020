@@ -23,7 +23,6 @@ option go_package = "github.com/googleinterns/step224-2020/config/proto";
 // HermesProber provides methods (PutFile, GetFile, DeleteFile) to communicate instructions to Cloudprober regarding file operations 
 service HermesProber {
   // Create and upload a file to the storage system
-
   rpc PutFile(PutFileRequest) returns (PutFileResponse);
   
   // Retrieve a file from the storage system

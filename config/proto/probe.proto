@@ -17,7 +17,7 @@
 //  Probe defines the probe interface for Hermes probes.
 //  It is used in a variety of other files as it is the top-level probe interface.
 
-syntax = "proto3";
+syntax = "proto2";
 
 package hermes;
 
@@ -27,10 +27,9 @@ import "github.com/googleinterns/step224-2020/config/proto/targets.proto";
 
 option go_package = "github.com/googleinterns/step224-2020/config/proto";
 
-// HermesProbeDef defines the top-level probe interface for Hermes probes.
-// All Hermes probes should extend this probe config.
+// HermesProbeDef defines the proto config for the Hermes monitor probe.
 message HermesProbeDef {
-  string probe_name= 1;
+  optional string probe_name = 1;
   repeated Target targets = 2;
 
   // TargetSystem is expected to be a storage system.
@@ -38,46 +37,31 @@ message HermesProbeDef {
   enum TargetSystem {
     TARGET_SYSTEM_UNSPECIFIED = 0;
     GCS = 1;
-    CEPH = 2;
   }
 
-  // Probe types currently supported
-  enum ProbeType {
-    PROBE_TYPE_UNSPECIFIED = 0;  // For unspecified probe types
-    GET = 1;  // GET probe is for getting an object (file) from a storage system.
-    PUT = 2;  // PUT probe is for putting an object (file) into a storage system.
-    DELETE = 3;  // DELETE probe is for deleting an object (file) from a storage system.
-  }
+  optional TargetSystem target_system = 3;
 
-  TargetSystem target_system = 3;
-  ProbeType probe_type = 4;
-
-  int32 interval_sec = 5;  // Probing interval in seconds, default = 3600
-
+  // Probing interval in seconds, default = 3600
+  optional int32 interval_sec = 4;  
   // Probes will not retry, they will fail if they timeout.
-  int32 timeout_sec = 6;  // Timeout in seconds, default = 60
+  optional int32 timeout_sec = 5;  // Timeout in seconds, default = 60
 
-  // If specified, latency is stored as a distribution
+  // If specified, latency is stored as a distribution metric.
   // Measures the latency of Hermes' probes, allowing you to diagnose a network issue or issue with Hermes.
-  cloudprober.metrics.Dist probe_latency_distribution = 7;  
+  // The measurement unit of latency will be seconds.
+  optional cloudprober.metrics.Dist probe_latency_distribution = 6;  
 
   // Measures the latency of the API calls for the relevant storage system targeted.
-  cloudprober.metrics.Dist api_call_latency_distribution = 8;  
-
-  enum LatencyUnit {
-    LATENCY_UNIT_UNSPECIFIED = 0;
-    NANOSECOND = 1;
-    MICROSECOND = 2;
-    MILLISECOND = 3;
-    SECOND = 4;
-    MINUTE = 5;
-    HOUR = 6;
-  }
-  
-  LatencyUnit latency_unit = 9;  // default is MICROSECOND
+  // The measurement unit of latency will be seconds.
+  optional cloudprober.metrics.Dist api_call_latency_distribution = 7;  
 
   // Additional labels for the probe latency and API call latency distribution metrics.
   // Add as key-value pairs
-  repeated cloudprober.probes.AdditionalLabel probe_latency_additional_label = 10;
-  repeated cloudprober.probes.AdditionalLabel api_call_latency_additional_label = 11;
+  repeated cloudprober.probes.AdditionalLabel probe_latency_additional_label = 9;
+  repeated cloudprober.probes.AdditionalLabel api_call_latency_additional_label = 10;
+
+  // Must extend ProbeDef so this probe can be added to Cloudprober as an extension.
+  extend cloudprober.probes.ProbeDef {
+    optional HermesProbeDef hermes_probe_def = 200;
+  }
 }

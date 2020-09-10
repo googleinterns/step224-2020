@@ -29,13 +29,14 @@ message Target {
   // TargetSystem is expected to be a storage system.
   // It will stay constant until support for new storage systems is added.
   enum TargetSystem {
-    GOOGLE_CLOUD_STORAGE = 0;
-    CEPH = 1;
+    TARGET_SYSTEM_UNSPECIFIED = 0;
+    GOOGLE_CLOUD_STORAGE = 1;
   }
   // TODO(#30) Establish connection method for GCS and Ceph using Go libraries.
   enum ConnectionType {
-     HTTP = 0;
-     HTTPS = 1;
+    CONNECTION_TYPE_UNSPECIFIED = 0;     
+    HTTP = 1;
+    HTTPS = 2;
   }
 
   TargetSystem target_system = 1;
@@ -50,5 +51,8 @@ message Target {
   string api_key = 4;
 
   int64 total_space_allocated_mib = 5;
-  string target_url = 6;  // URL for connecting to the the API of the target storage system.
+  // URL for connecting to the the API of the target storage system.
+  string target_url = 6;  
+  // Name for bucket used by Hermes on this target storage system.
+  string bucket_name = 7;  
 }
