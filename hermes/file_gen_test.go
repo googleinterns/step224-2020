@@ -18,25 +18,6 @@ import (
 	"testing"
 )
 
-// Hermes file test unit for generateFileName
-type FileNameTestUnit struct {
-	id       int
-	checksum string
-	want     string
-}
-
-var test_unit_table [5]FileNameTestUnit
-
-// Function completes the table of HermesFileTestUnit by iterating over its entries
-func completeTestUnitTable() {
-	for i := 0; i < 5; i++ {
-		test_unit_table[i].id = i*10 + 1
-		test_unit_table[i].checksum = "abba"
-		test_unit_table[i].want = fmt.Sprintf("Hermes_%02d_%v", test_unit_table[i].id, test_unit_table[i].checksum)
-	}
-}
-
-// Test function for the generateFileChecksum function in file_gen.go
 func TestChecksum(t *testing.T) {
 	want := "68f3caf439065824dcf75651c202e9f7c28ebf07" //expected checksum result
 	file := HermesFile{}
@@ -47,13 +28,32 @@ func TestChecksum(t *testing.T) {
 	}
 }
 
-// Test function for the generateFileName function in file_gen.go
+type FileNameTestUnit struct {
+	id       int
+	checksum string
+	want     string
+}
+
+var test_unit_table [5]FileNameTestUnit
+
 func TestFileName(t *testing.T) {
-	completeTestUnitTable()
+	test_unit_table[0].id = 1
+	test_unit_table[0].checksum = "abba"
+	test_unit_table[0].want = fmt.Sprintf("Hermes_%02d_%v", test_unit_table[0].id, test_unit_table[0].checksum)
+	test_unit_table[1].id = 11
+	test_unit_table[1].checksum = "abba"
+	test_unit_table[1].want = fmt.Sprintf("Hermes_%02d_%v", test_unit_table[1].id, test_unit_table[1].checksum)
+	test_unit_table[2].id = 21
+	test_unit_table[2].checksum = "abba"
+	test_unit_table[2].want = fmt.Sprintf("Hermes_%02d_%v", test_unit_table[2].id, test_unit_table[2].checksum)
+	test_unit_table[3].id = 31
+	test_unit_table[3].checksum = "abba"
+	test_unit_table[3].want = fmt.Sprintf("Hermes_%02d_%v", test_unit_table[3].id, test_unit_table[3].checksum)
+	test_unit_table[4].id = 41
+	test_unit_table[4].checksum = "abba"
+	test_unit_table[4].want = fmt.Sprintf("Hermes_%02d_%v", test_unit_table[4].id, test_unit_table[4].checksum)
 	for i := 0; i < 5; i++ {
-		file := HermesFile{}
-		file.generateFileName(test_unit_table[i].id, test_unit_table[i].checksum)
-		got := file.name
+		got := generateFileName(test_unit_table[i].id, test_unit_table[i].checksum)
 		if got != test_unit_table[i].want {
 			t.Errorf("generateFileName(%v, \"abba\") failed expected %v got %v", fmt.Sprintf("%2d", test_unit_table[i].id), test_unit_table[i].want, got)
 		}
