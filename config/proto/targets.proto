@@ -39,20 +39,23 @@ message Target {
     HTTPS = 2;
   }
 
-  TargetSystem target_system = 1;
-  ConnectionType connection_type = 2;
+  // Name associated with this target instance.
+  // For GCS, this is the project name.
+  string name = 1;
+  TargetSystem target_system = 2;
+  ConnectionType connection_type = 3;
 
   // REQUIRED for Ceph S3 API
   // Port for connecting to Ceph S3 API
-  int32 port = 3;
+  int32 port = 4;
 
   // REQUIRED for Ceph S3 API
   // GCS uses service account credentials instead.
-  string api_key = 4;
+  string api_key = 5;
 
-  int64 total_space_allocated_mib = 5;
+  int64 total_space_allocated_mib = 6;
   // URL for connecting to the the API of the target storage system.
-  string target_url = 6;  
+  string target_url = 7;  
   // Name for bucket used by Hermes on this target storage system.
-  string bucket_name = 7;  
+  string bucket_name = 8;  
 }
