@@ -18,7 +18,6 @@
 package hermes
 
 import (
-	"fmt"
 	"math/rand"
 	"time"
 )

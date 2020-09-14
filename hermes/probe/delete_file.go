@@ -14,13 +14,18 @@
 //
 // Delete_file implements the probe operation for deleting a file in a
 // storage system.
+// Package probe implements the probe that Hermes uses to monitor
+// a storage system.
 
 package probe
 
 import (
+	"context"
 	"fmt"
+	"time"
 
 	"cloud.google.com/go/storage"
+	"github.com/googleapis/google-cloud-go-testing/storage/stiface"
 	"github.com/googleinterns/step224-2020/hermes"
 	"google.golang.org/api/iterator"
 
@@ -43,50 +48,50 @@ import (
 //		- [...].probe_failed: there was an error during one of the API calls and the probe failed.
 //		- [...].deleted_file_found: the file was deleted but it is still found in the target bucket.
 //		- [...].list_bucket_failed: the listBucket operation failed when checking if the target file was deleted.
-func deleteRandomFile(ctx context.Context, mp *MonitorProbe, target *probepb.Target, client *storage.Client) (int, error) {
-	bucket := mp.config.GetBucketName()
+func deleteRandomFile(ctx context.Context, mp *MonitorProbe, target *probepb.Target, client *stiface.Client) (int, error) {
+	bucket := target.GetBucketName()
 
 	fileID := hermes.PickFileToDelete()
 
-	filename, ok := mp.Hermes.Journal.Filenames[objectID]
+	filename, ok := mp.Hermes.Journal.Filenames[int32(fileID)]
 	if !ok {
 		return fileID, fmt.Errorf("error, deleteRandomFile(id: %d).hermes_file_missing: could not delete file %s, file not found", fileID, filename)
 	}
 
-	file := client.Bucket(bucket).Object(filename)
+	file := (*client).Bucket(bucket).Object(filename)
 
-	start = time.Now()
+	start := time.Now()
 	if err := file.Delete(ctx); err != nil {
 		var status string
-		if err == ErrObjectNotExist {
+		if err == storage.ErrObjectNotExist {
 			status = "file_missing"
-		} else if err == ErrBucketNotExist {
+		} else if err == storage.ErrBucketNotExist {
 			status = "bucket_missing"
 		} else {
 			status = "probe_failed"
 		}
-		mp.latencyMetrics.apiCallLatency["delete"][status].AddFloat64(time.Now().Sub(start).Seconds())
+		mp.LatencyMetrics[target.GetName()].ApiCallLatency["delete"][status].Metric("latency").AddFloat64(time.Now().Sub(start).Seconds())
 		return fileID, fmt.Errorf("error, deleteRandomFile(id: %d).%s: could not delete file %s: %v", fileID, status, filename, err)
 	}
-	mp.latencyMetrics.apiCallLatency["delete"]["success"].AddFloat64(time.Now().Sub(start).Seconds())
+	mp.LatencyMetrics[target.GetName()].ApiCallLatency["delete"]["success"].Metric("latency").AddFloat64(time.Now().Sub(start).Seconds())
 
 	query := &storage.Query{Prefix: filename}
 	start = time.Now()
-	it := client.bucket(bucket).Objects(ctx, query)
-	mp.latencyMetrics.apiCallLatency["list"]["success"].AddFloat64(time.Now().Sub(start).Seconds())
+	it := (*client).Bucket(bucket).Objects(ctx, query)
+	mp.LatencyMetrics[target.GetName()].ApiCallLatency["list"]["success"].Metric("latency").AddFloat64(time.Now().Sub(start).Seconds())
 	for {
 		obj, err := it.Next()
-		if obj.ObjectName() == filename {
-			return fmt.Errorf("error, deleteRandomFile(id %d).deleted_file_found: object %q in bucket %q still listed after delete", fileId, obj, bucket)
+		if obj.Name == filename {
+			return fileID, fmt.Errorf("error, deleteRandomFile(id %d).deleted_file_found: object %v in bucket %q still listed after delete", fileID, *obj, bucket)
 		}
 		if err == iterator.Done {
 			break
 		}
 		if err != nil {
-			return fmt.errorf("error, deleteRandomFile(id: %d).list_bucket_failed: unable to list bucket %q: %v", fileID, bucket, err)
+			return fileID, fmt.Errorf("error, deleteRandomFile(id: %d).list_bucket_failed: unable to list bucket %q: %v", fileID, bucket, err)
 		}
 	}
 
-	mp.logger.Infof("Object %v deleted in bucket %s.", o, bucket)
+	mp.Logger.Infof("Object %v deleted in bucket %s.", file, bucket)
 	return fileID, nil
 }
