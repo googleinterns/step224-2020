@@ -23,33 +23,29 @@ package probe
 import (
 	"context"
 	"testing"
-	"time"
 
 	"cloud.google.com/go/storage"
-	"github.com/golang/protobuf/proto"
-	"github.com/google/cloudprober/logger"
-	"github.com/google/cloudprober/probes/options"
 	"github.com/googleapis/google-cloud-go-testing/storage/stiface"
 
-	metricpb "github.com/google/cloudprober/metrics/proto"
-	probes_configpb "github.com/google/cloudprober/probes/proto"
 	monitorpb "github.com/googleinterns/step224-2020/config/proto"
 )
 
-// TODO(evanSpendlove): embed client mock interface into code.
 func TestDeleteRandomFile(t *testing.T) {
 	ctx := context.Background()
 	c, err := storage.NewClient(ctx)
 	if err != nil {
 		t.Fatalf("client conn failed: could not connect to storage system with client: %v", err)
 	}
+
 	client := stiface.AdaptClient(c) // Don't use this, use fakeClient.
+
 	target := &monitorpb.Target{
 		Name:                   "hermes",
 		TargetSystem:           monitorpb.Target_GOOGLE_CLOUD_STORAGE,
 		TotalSpaceAllocatedMib: int64(100),
 		BucketName:             "test_bucket_5",
 	}
+
 	mp := &MonitorProbe{}
 
 	fileID, err := deleteRandomFile(ctx, mp, target, &client)
