@@ -26,8 +26,6 @@ import (
 
 	"cloud.google.com/go/storage"
 	"github.com/googleapis/google-cloud-go-testing/storage/stiface"
-
-	monitorpb "github.com/googleinterns/step224-2020/config/proto"
 )
 
 func TestDeleteRandomFile(t *testing.T) {
@@ -39,16 +37,15 @@ func TestDeleteRandomFile(t *testing.T) {
 
 	client := stiface.AdaptClient(c) // Don't use this, use fakeClient.
 
-	target := &monitorpb.Target{
-		Name:                   "hermes",
-		TargetSystem:           monitorpb.Target_GOOGLE_CLOUD_STORAGE,
-		TotalSpaceAllocatedMib: int64(100),
-		BucketName:             "test_bucket_5",
-	}
-
 	mp := &MonitorProbe{}
 
-	fileID, err := deleteRandomFile(ctx, mp, target, &client)
+	_, cfg := GenTestConfig("testMonitorProbe1")
+	opts := GenOptsFromConfig(t, cfg)
+	if err := mp.Init("testMonitorProbe1", opts); err != nil {
+		t.Errorf("error when calling Init() on MonitorProbe object: wanted %v, got %v for error return value", nil, err)
+	}
+
+	fileID, err := DeleteRandomFile(ctx, mp.config, mp.targets[0], &client, mp.logger)
 	if err != nil {
 		t.Errorf("deleteRandomFile(ID: %d) failed: expected error as %v, got %v", fileID, nil, err)
 	}
