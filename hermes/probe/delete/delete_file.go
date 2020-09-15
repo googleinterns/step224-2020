@@ -17,24 +17,25 @@
 // Package probe implements the probe that Hermes uses to monitor
 // a storage system.
 
-package probe
+package delete
 
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"time"
 
 	"cloud.google.com/go/storage"
 	"github.com/google/cloudprober/logger"
 	"github.com/googleapis/google-cloud-go-testing/storage/stiface"
-	"github.com/googleinterns/step224-2020/hermes"
 	"google.golang.org/api/iterator"
 
 	probepb "github.com/googleinterns/step224-2020/config/proto"
+	probe "github.com/googleinterns/step224-2020/hermes/probe"
 	m "github.com/googleinterns/step224-2020/hermes/probe/metrics"
 )
 
-// deleteRandomFile deletes a random file in the target storage system bucket.
+// DeleteRandomFile deletes a random file in the target storage system bucket.
 // It then checks that the file has been deleted by trying to get the object.
 // Arguments:
 // TODO(evanSpendlove): Update comment here
@@ -52,12 +53,12 @@ import (
 //		- [...].probe_failed: there was an error during one of the API calls and the probe failed.
 //		- [...].deleted_file_found: the file was deleted but it is still found in the target bucket.
 //		- [...].list_bucket_failed: the listBucket operation failed when checking if the target file was deleted.
-func DeleteRandomFile(ctx context.Context, config *probepb.HermesProbeDef, target *Target, client *stiface.Client, logger *logger.Logger) (int, error) {
+func DeleteRandomFile(ctx context.Context, config *probepb.HermesProbeDef, target *probe.Target, client *stiface.Client, logger *logger.Logger) (int32, error) {
 	bucket := target.Target.GetBucketName()
 
-	fileID := hermes.PickFileToDelete()
+	fileID := pickFileToDelete()
 
-	filename, ok := target.Journal.Filenames[int32(fileID)]
+	filename, ok := target.Journal.Filenames[fileID]
 	if !ok {
 		return fileID, fmt.Errorf("deleteRandomFile(id: %d).hermes_file_missing: could not delete file %s, file not found", fileID, filename)
 	}
@@ -66,25 +67,27 @@ func DeleteRandomFile(ctx context.Context, config *probepb.HermesProbeDef, targe
 
 	start := time.Now()
 	if err := file.Delete(ctx); err != nil {
-		var status string
-		if err == storage.ErrObjectNotExist {
-			status = m.ExitStatuses[m.FILE_MISSING]
-		} else if err == storage.ErrBucketNotExist {
-			status = m.ExitStatuses[m.BUCKET_MISSING]
-		} else {
-			status = m.ExitStatuses[m.PROBE_FAILED]
+		var status m.ExitStatus
+		switch err {
+		case storage.ErrObjectNotExist:
+			status = m.FileMissing
+		case storage.ErrBucketNotExist:
+			status = m.BucketMissing
+		default:
+			status = m.ProbeFailed
 		}
-		target.LatencyMetrics.ApiCallLatency[m.ApiCalls[m.API_DELETE_FILE]][status].Metric("latency").AddFloat64(time.Now().Sub(start).Seconds())
-		return fileID, fmt.Errorf("deleteRandomFile(id: %d).%s: could not delete file %s: %w", fileID, status, filename, err)
+
+		target.LatencyMetrics.APICallLatency[m.APIDeleteFile][status].Metric("latency").AddFloat64(time.Now().Sub(start).Seconds())
+		return fileID, fmt.Errorf("deleteRandomFile(id: %d).%v: could not delete file %s: %w", fileID, status, filename, err)
 	}
-	target.LatencyMetrics.ApiCallLatency[m.ApiCalls[m.API_DELETE_FILE]][m.ExitStatuses[m.SUCCESS]].Metric("latency").AddFloat64(time.Now().Sub(start).Seconds())
+	target.LatencyMetrics.APICallLatency[m.APIDeleteFile][m.Success].Metric("latency").AddFloat64(time.Now().Sub(start).Seconds())
 
 	query := &storage.Query{Prefix: filename}
 	start = time.Now()
-	it := (*client).Bucket(bucket).Objects(ctx, query)
-	target.LatencyMetrics.ApiCallLatency[m.ApiCalls[m.API_LIST_FILES]][m.ExitStatuses[m.SUCCESS]].Metric("latency").AddFloat64(time.Now().Sub(start).Seconds())
+	objects := (*client).Bucket(bucket).Objects(ctx, query)
+	target.LatencyMetrics.APICallLatency[m.APIListFiles][m.Success].Metric("latency").AddFloat64(time.Now().Sub(start).Seconds())
 	for {
-		obj, err := it.Next()
+		obj, err := objects.Next()
 		if obj.Name == filename {
 			return fileID, fmt.Errorf("deleteRandomFile(id %d).deleted_file_found: object %v in bucket %q still listed after delete", fileID, *obj, bucket)
 		}
@@ -101,4 +104,16 @@ func DeleteRandomFile(ctx context.Context, config *probepb.HermesProbeDef, targe
 
 	logger.Infof("Object %v deleted in bucket %s.", file, bucket)
 	return fileID, nil
+}
+
+// pickFileToDelete picks which file to delete and returns the integer ID of this file.
+// Returns:
+//	- ID: returns the ID of the file to be deleted.
+func pickFileToDelete() int32 {
+	const (
+		beg                    = 10 // we can delete files staring from the file Hermes_10
+		numberOfDeletableFiles = 41 // there are 41 files to delete from [Hermes_10,Hermes_50]
+	)
+	rand.Seed(time.Now().UnixNano())
+	return int32(rand.Intn(numberOfDeletableFiles) + beg)
 }
