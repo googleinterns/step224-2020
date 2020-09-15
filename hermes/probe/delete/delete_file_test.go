@@ -117,7 +117,7 @@ func TestDeleteRandomFile(t *testing.T) {
 		t.Fatalf("client conn failed: could not connect to storage system with client: %v", err)
 	}
 
-	client := stiface.AdaptClient(c) // Don't use this, use fakeClient.
+	client := stiface.AdaptClient(c) // TODO(evanSpendlove): Use fakeClient instead
 
 	mp := &probe.MonitorProbe{}
 

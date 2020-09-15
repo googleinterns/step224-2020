@@ -14,9 +14,8 @@
 //
 // Delete_file implements the probe operation for deleting a file in a
 // storage system.
-// Package probe implements the probe that Hermes uses to monitor
-// a storage system.
 
+// Package delete implements the file deletion operation with a storage system.
 package delete
 
 import (
@@ -30,7 +29,6 @@ import (
 	"github.com/googleapis/google-cloud-go-testing/storage/stiface"
 	"google.golang.org/api/iterator"
 
-	probepb "github.com/googleinterns/step224-2020/config/proto"
 	probe "github.com/googleinterns/step224-2020/hermes/probe"
 	m "github.com/googleinterns/step224-2020/hermes/probe/metrics"
 )
@@ -53,10 +51,31 @@ import (
 //		- [...].probe_failed: there was an error during one of the API calls and the probe failed.
 //		- [...].deleted_file_found: the file was deleted but it is still found in the target bucket.
 //		- [...].list_bucket_failed: the listBucket operation failed when checking if the target file was deleted.
-func DeleteRandomFile(ctx context.Context, config *probepb.HermesProbeDef, target *probe.Target, client *stiface.Client, logger *logger.Logger) (int32, error) {
-	bucket := target.Target.GetBucketName()
-
+func DeleteRandomFile(ctx context.Context, target *probe.Target, client *stiface.Client, logger *logger.Logger) (int32, error) {
 	fileID := pickFileToDelete()
+	return DeleteFile(ctx, fileID, target, client, logger)
+}
+
+// DeleteFile deletes the file, corresponding to the ID passed, in the target storage system bucket.
+// It then checks that the file has been deleted by trying to get the object.
+// Arguments:
+// TODO(evanSpendlove): Update comment here
+//	- ctx: pass the context so this probe can be cancelled if needed.
+//	- config: pass the HermesProbeDef config for the probe calling this function.
+//	- target: pass the target run information.
+//	- client: pass an initialised storage client for this target system.
+//	- logger: pass the logger associated with the probe calling this function.
+// Returns:
+//	- fileID: returns the ID of the file delete OR a missing file to be created if one is found.
+//	- err:
+//		- [...].hermes_file_missing: the file to be deleted does not exist in Hermes' StateJournal.
+//		- [...].file_missing: the file to be deleted could not be found in the target bucket.
+//		- [...].bucket_missing: the target bucket on this target system was not found.
+//		- [...].probe_failed: there was an error during one of the API calls and the probe failed.
+//		- [...].deleted_file_found: the file was deleted but it is still found in the target bucket.
+//		- [...].list_bucket_failed: the listBucket operation failed when checking if the target file was deleted.
+func DeleteFile(ctx context.Context, fileID int32, target *probe.Target, client *stiface.Client, logger *logger.Logger) (int32, error) {
+	bucket := target.Target.GetBucketName()
 
 	filename, ok := target.Journal.Filenames[fileID]
 	if !ok {
