@@ -1,113 +1,123 @@
 package probe
-
+ 
 import (
-	"context"
-	"crypto/sha1"
-	"fmt"
-	"io"
-	"math/rand"
-	"os"
-	"sync"
-	"time"
-
-	"cloud.google.com/go/storage"
-	"github.com/google/cloudprober/logger"
-	"github.com/google/cloudprober/metrics"
-	"github.com/google/cloudprober/probes/options"
-	"github.com/google/cloudprober/targets/endpoint"
-	"github.com/googleinterns/step224-2020/blob/evan/hermesMain/cmd"
+   "context"
+   "crypto/sha1"
+   "fmt"
+   "io"
+   "math/rand"
+   // "os"
+   // "sync"
+ 
+   // "cloud.google.com/go/storage"
+   "github.com/googleapis/google-cloud-go-testing/storage/stiface"
+   "github.com/google/cloudprober/logger"
+   // "github.com/google/cloudprober/metrics"
+   // "github.com/google/cloudprober/probes/options"
+   // "github.com/google/cloudprober/targets/endpoint"
+   // "github.com/googleinterns/step224-2020/blob/master/hermes/hermes.go"
 )
-
-type RandomFile struct {
-	Seed int64
-	Size int // File size in bytes
+ 
+const (
+   begin = 1  // ID of the first HermesFile
+   end   = 50 // ID of the last HermesFile
+   maxFileSize = 1000 // maximum allowed file size in bytes
+)
+ 
+type RandomHermesFile struct {
+   ID   int64 // ID is a positive integer in the range [1,50]
+   Size int   // File size in bytes
 }
-
-func (f *RandomFile) NewReader() *randomFileReader {
-	return &randomFileReader{size: f.Size, rand: rand.New(rand.NewSource(f.Seed))}
+ 
+type randomHermesFileReader struct {
+   size int // size in bytes
+   i    int // currently reading this byte
+   rand *rand.Rand
 }
-
-type randomFileReader struct {
-	size int
-	// Current reading index.
-	i    int
-	rand *rand.Rand
+ 
+func (r *randomHermesFileReader) readDone() bool {
+   return r.i >= r.size
 }
-
-func (r *randomFileReader) Read(b []byte) (n int, err error) {
-	if r.i >= r.size {
-		return 0, io.EOF
-	}
-	if len(b) > r.size-r.i {
-		n, err = r.rand.Read(b[:r.size-r.i])
-	} else {
-		n, err = r.rand.Read(b)
-	}
-	r.i += n
-	return
+ 
+func (r *randomHermesFileReader) bytesLeft() int {
+   return (r.size - r.i)
 }
-
-func (f *RandomFile) generateChecksum() (string, error) {
-	r := f.NewReader()
-	h := sha1.New()
-	buff := make([]byte, 8)
-	for {
-		n, err := r.Read(buff)
-		if err == io.EOF {
-			break
-		}
-		if _, err = io.Copy(h, r); err != nil {
-			return nil, fmt.Errorf("io.Copy: %v", err)
-		}
-
-	}
-
-	// returns checksum in hex notation
-	return fmt.Sprintf("%x", h.Sum(nil)), nil
+ 
+func (r *randomHermesFileReader) bufferTooLong(buffer []byte) bool {
+   return len(buffer) > r.bytesLeft()
 }
-
-func (f *RandomFile) generateFileName(fileID int) (string, error) {
-	checksum, err := f.generateChecksum()
-	if err != nil {
-		return nil, err
-	}
-	return fmt.Sprintf("Hermes_%02d_%v", fileID, checksum), nil
+ 
+func (r *randomHermesFileReader) Read(buff []byte) (n int, err error) {
+   if r.readDone() {
+       return 0, io.EOF
+   }
+   b := buff
+   if r.bufferTooLong(b){
+       b = buff[:r.bytesLeft()]
+   }
+   n, err = r.rand.Read(b)  //n is the length  of the buffer
+   if(err != nil){
+       return  n, err// 0 as nil casn't be returned as a type int argument
+   }
+   r.i += n
+   return n, err
 }
-
-func (p *MonitorProbe) CreateFile(ctx context.Context, target string, bucketName string, fileID int, fileSize int) error {
-	if fileID < 1 || fileID > 50 {
-		return fmt.Errorf("At %v the file ID provided wasn't in the required range [0,50]", time.Now())
-	}
-	f := RandomFile{Seed: fileID, Size: fileSize}
-	fileName, err := f.generateFileName(fileID)
-	if err != nil {
-		return err
-	}
-	client, err := storage.NewClient(ctx)
-	if err != nil {
-		return fmt.Errorf("storage.NewClient: %v", err)
-	}
-	defer client.Close()
-	ctx, cancel := context.WithTimeout(ctx, p.opts.Timeout)
-	defer cancel()
-	r := f.NewReader()
-
-	wc := client.Bucket(bucketName).Object(fileName).NewWriter(ctx)
-	buff := make([]byte, 8)
-	for {
-		n, err := r.Read(buff)
-		if err == io.EOF {
-			break
-		}
-		if _, err = io.Copy(wc, r); err != nil {
-			return fmt.Errorf("io.Copy: %v", err)
-		}
-
-	}
-	//io
-	if err := wc.Close(); err != nil {
-		return fmt.Errorf("Writer.Close: %v", err)
-	}
-	return nil
-
+ 
+// Warning: NewReader is not thread safe
+func (f *RandomHermesFile) NewReader() *randomHermesFileReader {
+   return &randomHermesFileReader{size: f.Size, rand: rand.New(rand.NewSource(f.ID))} // ID will serve as a Seed and i will be set to 0 automatically
+}
+ 
+func (f *RandomHermesFile) CheckSum() ([]byte, error) {
+   r := f.NewReader()
+   h := sha1.New()
+   if _, err := io.Copy(h, r); err != nil {
+       return nil, fmt.Errorf("io.Copy: %v", err)
+   }
+   // returns checksum in hex notation
+   return h.Sum(nil), nil
+}
+ 
+func (f *RandomHermesFile) FileName() (string, error) {
+   if f.ID < begin || f.ID > end {
+       return "", fmt.Errorf("The file ID provided %v wasn't in the required range [1,50]", f.ID)
+   }
+   if f.Size > maxFileSize {
+       return "", fmt.Errorf("The file size provided %v bytes exceeded the limit %v bytes", f.Size, maxFileSize)
+   }
+   if f.Size <= 0 {
+       return "", fmt.Errorf("The file size provided %v is not a positive number as required", f.Size)
+   }
+   checksum, err := f.CheckSum()
+   if err != nil {
+       return "", err
+   }
+   return fmt.Sprintf("Hermes_%02d_%v", f.ID, fmt.Sprintf("%x", checksum)), nil
+}
+ 
+func CreateFile(ctx context.Context, target *Target, fileID int32, fileSize int, client *stiface.Client, logger *logger.Logger) error {
+   f := RandomHermesFile{ID: int64(fileID), Size: fileSize}
+   bucketName := target.Target.GetBucketName()
+   fileName, err := f.FileName()
+   if err != nil {
+       return err
+   }
+   if _, ok := target.Journal.Filenames[fileID]; ok {
+       return fmt.Errorf("CreateFile(ID: %v) failed file with this ID already exists", fileID)
+   }  
+   r := f.NewReader()
+   // start := time.Now()
+   wc := (*client).Bucket(bucketName).Object(fileName).NewWriter(ctx)
+   if _, err = io.Copy(wc, r); err != nil {
+       return fmt.Errorf("io.Copy: %v", err)
+   }
+   if err := wc.Close(); err != nil {
+       return fmt.Errorf("Writer.Close: %v", err)
+   }
+   target.Journal.Filenames[fileID] = fileName
+   if logger != nil {
+      logger.Infof("Object %v added in bucket %s.", fileName, bucketName)
+   }
+   return nil
+ 
 }
