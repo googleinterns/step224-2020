@@ -38,10 +38,10 @@ import (
 // Arguments:
 // TODO(evanSpendlove): Update comment here
 //	- ctx: pass the context so this probe can be cancelled if needed.
-//	- config: pass the HermesProbeDef config for the probe calling this function.
 //	- target: pass the target run information.
 //	- client: pass an initialised storage client for this target system.
 //	- logger: pass the logger associated with the probe calling this function.
+//		-> logger can log to Google Cloud if configured to do so.
 // Returns:
 //	- fileID: returns the ID of the file delete OR a missing file to be created if one is found.
 //	- err:

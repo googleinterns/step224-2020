@@ -119,7 +119,7 @@ func TestDeleteRandomFile(t *testing.T) {
 
 	client := stiface.AdaptClient(c) // TODO(evanSpendlove): Use fakeClient instead
 
-	mp := &probe.MonitorProbe{}
+	mp := &probe.Probe{}
 
 	_, cfg := GenTestConfig("testMonitorProbe1")
 	opts := GenOptsFromConfig(t, cfg)
@@ -127,7 +127,7 @@ func TestDeleteRandomFile(t *testing.T) {
 		t.Errorf("error when calling Init() on MonitorProbe object: wanted %v, got %v for error return value", nil, err)
 	}
 
-	fileID, err := DeleteRandomFile(ctx, cfg, GenTargetFromConfig(cfg), &client, opts.Logger)
+	fileID, err := DeleteRandomFile(ctx, GenTargetFromConfig(cfg), &client, opts.Logger)
 	if err != nil {
 		t.Errorf("deleteRandomFile(ID: %d) failed: expected error as %v, got %v", fileID, nil, err)
 	}
