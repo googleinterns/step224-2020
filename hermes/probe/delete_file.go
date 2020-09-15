@@ -59,7 +59,7 @@ func DeleteRandomFile(ctx context.Context, config *probepb.HermesProbeDef, targe
 
 	filename, ok := target.Journal.Filenames[int32(fileID)]
 	if !ok {
-		return fileID, fmt.Errorf("error, deleteRandomFile(id: %d).hermes_file_missing: could not delete file %s, file not found", fileID, filename)
+		return fileID, fmt.Errorf("deleteRandomFile(id: %d).hermes_file_missing: could not delete file %s, file not found", fileID, filename)
 	}
 
 	file := (*client).Bucket(bucket).Object(filename)
@@ -75,7 +75,7 @@ func DeleteRandomFile(ctx context.Context, config *probepb.HermesProbeDef, targe
 			status = m.ExitStatuses[m.PROBE_FAILED]
 		}
 		target.LatencyMetrics.ApiCallLatency[m.ApiCalls[m.API_DELETE_FILE]][status].Metric("latency").AddFloat64(time.Now().Sub(start).Seconds())
-		return fileID, fmt.Errorf("error, deleteRandomFile(id: %d).%s: could not delete file %s: %w", fileID, status, filename, err)
+		return fileID, fmt.Errorf("deleteRandomFile(id: %d).%s: could not delete file %s: %w", fileID, status, filename, err)
 	}
 	target.LatencyMetrics.ApiCallLatency[m.ApiCalls[m.API_DELETE_FILE]][m.ExitStatuses[m.SUCCESS]].Metric("latency").AddFloat64(time.Now().Sub(start).Seconds())
 
@@ -86,13 +86,13 @@ func DeleteRandomFile(ctx context.Context, config *probepb.HermesProbeDef, targe
 	for {
 		obj, err := it.Next()
 		if obj.Name == filename {
-			return fileID, fmt.Errorf("error, deleteRandomFile(id %d).deleted_file_found: object %v in bucket %q still listed after delete", fileID, *obj, bucket)
+			return fileID, fmt.Errorf("deleteRandomFile(id %d).deleted_file_found: object %v in bucket %q still listed after delete", fileID, *obj, bucket)
 		}
 		if err == iterator.Done {
 			break
 		}
 		if err != nil {
-			return fileID, fmt.Errorf("error, deleteRandomFile(id: %d).list_bucket_failed: unable to list bucket %q: %w", fileID, bucket, err)
+			return fileID, fmt.Errorf("deleteRandomFile(id: %d).list_bucket_failed: unable to list bucket %q: %w", fileID, bucket, err)
 		}
 	}
 
