@@ -115,7 +115,7 @@ func CreateFile(ctx context.Context, target *probe.Target, fileID int32, fileSiz
 		default:
 			status = m.ProbeFailed
 		}
-		target.LatencyMetrics.APICallLatency[m.APIDeleteFile][status].Metric("latency").AddFloat64(time.Now().Sub(start).Seconds())
+		target.LatencyMetrics.APICallLatency[m.APICreateFile][status].Metric("latency").AddFloat64(time.Now().Sub(start).Seconds())
 		return fmt.Errorf("CreateFile(id: %d).%v: could not create file %s: %w", fileID, status, fileName, err)
 	}
 	if err := wc.Close(); err != nil {
