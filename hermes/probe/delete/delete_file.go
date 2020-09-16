@@ -135,9 +135,9 @@ func DeleteFile(ctx context.Context, fileID int32, target *probe.Target, client 
 //	- ID: returns the ID of the file to be deleted.
 func pickFileToDelete() int32 {
 	const (
-		beg                    = 10 // we can delete files staring from the file Hermes_10
-		numberOfDeletableFiles = 41 // there are 41 files to delete from [Hermes_10,Hermes_50]
+		begin                  = 11 // we can delete files staring from the file Hermes_11
+		numberOfDeletableFiles = 40 // there are 40 files to delete from [Hermes_11,Hermes_50]
 	)
 	rand.Seed(time.Now().UnixNano())
-	return int32(rand.Intn(numberOfDeletableFiles) + beg)
+	return int32(rand.Intn(numberOfDeletableFiles) + being)
 }
