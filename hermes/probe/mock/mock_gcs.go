@@ -72,6 +72,39 @@ func (c *fakeClient) Bucket(name string) stiface.BucketHandle {
 	return fakeBucketHandle{c: c, name: name}
 }
 
+func (b fakeBucketHandle) Objects(_ context.Context, query *storage.Query) stiface.ObjectIterator {
+	iterator := &fakeObjectIterator{
+		idx:     0,
+		objects: make(map[int]*storage.ObjectAttrs),
+	}
+
+	bkt, ok := b.c.buckets[b.name]
+	if !ok {
+		return nil
+	}
+
+	for obj := range bkt.objects {
+		if strings.HasPrefix(obj, query.Prefix) {
+			iterator.objects[iterator.idx] = &storage.ObjectAttrs{Name: obj}
+		}
+	}
+
+	return iterator
+}
+
+func (i *fakeObjectIterator) Next() (*storage.ObjectAttrs, error) {
+	if i.idx >= len(i.objects) {
+		return nil, iterator.Done
+	}
+	obj := i.objects[i.idx]
+	i.idx++
+	return obj, nil
+}
+
+func (i *fakeObjectIterator) PageInfo() *iterator.PageInfo {
+	return nil
+}
+
 func (w *fakeWriter) Write(data []byte) (int, error) {
 	return w.buf.Write(data)
 }
