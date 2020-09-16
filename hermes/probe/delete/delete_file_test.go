@@ -23,11 +23,13 @@ import (
 	"fmt"
 	"testing"
 
+	"cloud.google.com/go/storage"
 	"github.com/golang/protobuf/proto"
 	"github.com/google/cloudprober/logger"
 	"github.com/googleapis/google-cloud-go-testing/storage/stiface"
 	"github.com/googleinterns/step224-2020/hermes/probe"
 	"github.com/googleinterns/step224-2020/hermes/probe/mock"
+	"google.golang.org/api/iterator"
 
 	metricpb "github.com/google/cloudprober/metrics/proto"
 	monitorpb "github.com/googleinterns/step224-2020/config/proto"
@@ -63,6 +65,9 @@ func genTestConfig(name string) *monitorpb.HermesProbeDef {
 	return hermesExtension
 }
 
+// getTargetPb generates a target proto config.
+// Returns:
+//	- target: target proto config
 func genTargetPb() *monitorpb.Target {
 	return &monitorpb.Target{
 		Name:                   "hermes",
@@ -80,6 +85,7 @@ const (
 	bucketName = "test_bucket_5"
 )
 
+// genTestTarget generates an initialised test Target struct.
 func genTestTarget(cfg *monitorpb.HermesProbeDef, t *testing.T) *probe.Target {
 	filenames := make(map[int32]string)
 
@@ -108,6 +114,7 @@ func genTestTarget(cfg *monitorpb.HermesProbeDef, t *testing.T) *probe.Target {
 	}
 }
 
+// setupMockSystem sets up the mock storage system through the fake client.
 func setupMockSystem(ctx context.Context, t *testing.T) stiface.Client {
 	client := mock.NewFakeClient()
 
@@ -128,7 +135,7 @@ func setupMockSystem(ctx context.Context, t *testing.T) stiface.Client {
 		writer := client.Bucket(bucketName).Object(filename).NewWriter(ctx)
 		n, err := writer.Write([]byte(contents))
 		if err != nil || n != len([]byte(contents)) {
-			t.Errorf("failed to create file during setup of mock storage system, err: %v", err)
+			t.Fatalf("failed to create file during setup of mock storage system, err: %v", err)
 		}
 		writer.Close()
 	}
@@ -141,14 +148,31 @@ func TestDeleteRandomFile(t *testing.T) {
 	ctx := context.Background()
 
 	client := setupMockSystem(ctx, t)
+	target := genTestTarget(genTestConfig(testProbeName), t)
 
 	logger, err := logger.NewCloudproberLog(testProbeName)
 	if err != nil {
 		t.Fatalf("error in initializing logger for the probe (%s): %v", testProbeName, err)
 	}
 
-	fileID, err := DeleteRandomFile(ctx, genTestTarget(genTestConfig(testProbeName), t), client, logger)
+	fileID, err := DeleteRandomFile(ctx, target, client, logger)
 	if err != nil {
 		t.Errorf("deleteRandomFile(ID: %d) failed: expected error as %v, got %v", fileID, nil, err)
 	}
+	filename := target.Journal.Filenames[fileID]
+	objects := client.Bucket(bucketName).Objects(ctx, &storage.Query{Prefix: filename})
+	for {
+		obj, err := objects.Next()
+		if err == iterator.Done {
+			break
+		}
+		if obj.Name == filename {
+			t.Errorf("deleteRandomFile failed, expected object to be deleted, got object found.")
+		}
+		if err != nil {
+			t.Errorf("deleteRandomFile failed, expected %v, got %v", nil, err)
+		}
+	}
 }
+
+// TODO(evanSpendlove): Add more tests that check that DeleteFile() throws the correct errors.

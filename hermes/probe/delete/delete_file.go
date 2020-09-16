@@ -99,15 +99,15 @@ func DeleteFile(ctx context.Context, fileID int32, target *probe.Target, client 
 			status = m.ProbeFailed
 		}
 
-		target.LatencyMetrics.APICallLatency[m.APIDeleteFile][status].Metric("latency_s").AddFloat64(time.Now().Sub(start).Seconds())
+		target.LatencyMetrics.APICallLatency[m.APIDeleteFile][status].Metric("hermes_api_latency_s").AddFloat64(time.Now().Sub(start).Seconds())
 		return fileID, fmt.Errorf("delete(%q, %q) failed; status %v: %w", bucket, filename, status, err)
 	}
-	target.LatencyMetrics.APICallLatency[m.APIDeleteFile][m.Success].Metric("latency_s").AddFloat64(time.Now().Sub(start).Seconds())
+	target.LatencyMetrics.APICallLatency[m.APIDeleteFile][m.Success].Metric("hermes_api_latency_s").AddFloat64(time.Now().Sub(start).Seconds())
 
 	query := &storage.Query{Prefix: filename}
 	start = time.Now()
 	objects := client.Bucket(bucket).Objects(ctx, query)
-	target.LatencyMetrics.APICallLatency[m.APIListFiles][m.Success].Metric("latency_s").AddFloat64(time.Now().Sub(start).Seconds())
+	target.LatencyMetrics.APICallLatency[m.APIListFiles][m.Success].Metric("hermes_api_latency_s").AddFloat64(time.Now().Sub(start).Seconds())
 	for {
 		obj, err := objects.Next()
 		if err == iterator.Done {
