@@ -1,3 +1,6 @@
+// TODO (#70) add license header and author line
+// TODO (#68) add doc strings
+
 package create
 
 import (
@@ -6,33 +9,34 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/googleinterns/step224-2020/hermes/probe"
+	"github.com/googleinterns/step224-2020/hermes/probe/fakegcs"
+	"github.com/googleinterns/step224-2020/hermes/probe/metrics"
+
 	metricpb "github.com/google/cloudprober/metrics/proto"
 	probepb "github.com/googleinterns/step224-2020/config/proto"
-	"github.com/googleinterns/step224-2020/hermes/probe"
-	"github.com/googleinterns/step224-2020/hermes/probe/metrics"
-	"github.com/googleinterns/step224-2020/hermes/probe/mock"
 	journalpb "github.com/googleinterns/step224-2020/hermes/proto"
 )
 
 func TestFileName(t *testing.T) {
 	tests := []struct {
-		file     RandomHermesFile
+		file     RandomFile
 		wantName string
-		wantErr  string
+		wantErr  bool
 	}{
-		{RandomHermesFile{51, 12}, "", "The file ID provided 51 wasn't in the required range [1,50]"},
-		{RandomHermesFile{0, 50}, "", "The file ID provided 0 wasn't in the required range [1,50]"},
-		{RandomHermesFile{3, 100}, "Hermes_03", ""},
-		{RandomHermesFile{12, 100}, "Hermes_12", ""},
-		{RandomHermesFile{3, 0}, "", "The file size provided 0 is not a positive number as required"},
-		{RandomHermesFile{3, 1001}, "", "The file size provided 1001 bytes exceeded the limit 1000 bytes"},
+		{RandomFile{51, 12}, "", true},
+		{RandomFile{0, 50}, "", true},
+		{RandomFile{3, 100}, "Hermes_03", false},
+		{RandomFile{12, 100}, "Hermes_12", false},
+		{RandomFile{3, 0}, "", true},
+		{RandomFile{3, 1001}, "", true},
 	}
 
 	for _, test := range tests {
 		got, err := test.file.FileName()
 		if err == nil {
-			if test.wantErr != "" {
-				t.Errorf("{%v, %v}.FileName() gave wrong error expected %s, got nil", test.file.ID, test.file.Size, test.wantErr)
+			if test.wantErr {
+				t.Errorf("{%v, %v}.FileName() failed expected an error got nil", test.file.ID, test.file.Size)
 			}
 			if test.wantName != got[0:9] {
 				t.Errorf("{%v, %v}.FileName() failed expected prefix %s, got %s", test.file.ID, test.file.Size, test.wantName, got[0:9])
@@ -41,45 +45,41 @@ func TestFileName(t *testing.T) {
 			if got != "" {
 				t.Errorf("{%v, %v}.FileName() failed expected empty string, got %s", test.file.ID, test.file.Size, got)
 			}
-			if err.Error() != test.wantErr {
-				t.Errorf("{%v, %v}.FileName() gave wrong error expected %s, got %s", test.file.ID, test.file.Size, test.wantErr, err.Error())
+			if !test.wantErr {
+				t.Errorf("{%v, %v}.FileName() failed and gave unexpected error %s", test.file.ID, test.file.Size, err.Error())
 			}
 		}
 	}
 }
 
 func TestChecksum(t *testing.T) {
-	f := RandomHermesFile{11, 100}
-	fTwo := RandomHermesFile{13, 1000}
-	fCopy := RandomHermesFile{11, 100}
-	checksum, err := f.CheckSum()
+	file := RandomFile{11, 100}
+	otherFile := RandomFile{13, 1000}
+	checksum, err := file.CheckSum()
 	if err != nil {
 		t.Error(err)
 	}
-	checksumTwo, err := fTwo.CheckSum()
+	otherChecksum, err := otherFile.CheckSum()
 	if err != nil {
 		t.Error(err)
 	}
+	if fmt.Sprintf("%x", checksum) == fmt.Sprintf("%x", otherChecksum) {
+		t.Errorf("Checksum returned the same value for two different RandomFiles {%v, %v} and {%v, %v}", file.ID, file.Size, otherFile.ID, otherFile.Size)
 
-	checksumCopy, err := fCopy.CheckSum()
+	}
+	checksumAgain, err := file.CheckSum()
 	if err != nil {
 		t.Error(err)
 	}
-
-	if fmt.Sprintf("%x", checksum) != fmt.Sprintf("%x", checksumCopy) { //comparing checksums converted to strings as a slice can only be compared to nil
-		t.Errorf("Checksum returned different values for the same RandomHermesFiles {%v, %v}", f.ID, f.Size)
+	if fmt.Sprintf("%x", checksum) != fmt.Sprintf("%x", checksumAgain) {
+		t.Errorf("Checksum returned different values for the same RandomFiles {%v, %v}", file.ID, file.Size)
 	}
-
-	if fmt.Sprintf("%x", checksum) == fmt.Sprintf("%x", checksumTwo) {
-		t.Errorf("Checksum returned the same value for two different RandomHermesFiles {%v, %v} and {%v, %v}", f.ID, f.Size, fTwo.ID, fTwo.Size)
-	}
-
 }
 
 func TestCreateFile(t *testing.T) {
 	ctx := context.Background()
 	bucketName := "test_bucket_probe0"
-	client := mock.NewFakeClient()
+	client := fakegcs.NewClient()
 	fbh := client.Bucket(bucketName)                         // fakeBucketHandle
 	if err := fbh.Create(ctx, bucketName, nil); err != nil { // creates the bucket with name "test_bucket_probe0"
 		t.Error(err)
@@ -129,7 +129,7 @@ func TestCreateFile(t *testing.T) {
 		BucketName:             "test_bucket_probe0",
 	}
 
-	err := fmt.Errorf("") //err cannot be defined in the if statement below using ':=' as then the set up fails with the error:  expected identifier on left side of :=
+	var err error
 	if target.LatencyMetrics, err = metrics.NewMetrics(hp, probeTarget); err != nil {
 		t.Error(err)
 	}
