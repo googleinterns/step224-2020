@@ -18,55 +18,73 @@ import (
 	journalpb "github.com/googleinterns/step224-2020/hermes/proto"
 )
 
+func TestNewRandomFile(t *testing.T) {
+	tests := []struct {
+		fileID   int64
+		fileSize int
+		wantErr  bool
+		wantRF   *RandomFile
+	}{
+		{51, 12, true, &RandomFile{}},
+		{0, 50, true, &RandomFile{}},
+		{3, 100, false, &RandomFile{3, 100}},
+		{12, 100, false, &RandomFile{12, 100}},
+		{3, 0, true, &RandomFile{}},
+		{3, 1001, true, &RandomFile{}},
+	}
+	for _, test := range tests {
+		got, err := NewRandomFile(test.fileID, test.fileSize)
+		if err != nil && !test.wantErr {
+			t.Errorf("{%v, %v}.NewRandomFile() failed and returned an unexpected error %s", test.fileID, test.fileSize, err.Error())
+		}
+		if err == nil && test.wantErr {
+			t.Errorf("{%v, %v}.NewRandomFile() failed expected an error got nil", test.fileID, test.fileSize)
+		}
+		if got.ID != test.wantRF.ID || got.Size != test.wantRF.Size {
+			t.Errorf("{%v, %v}.NewRandomFile() failed expected {%v,%v}, got {%v,%v}", test.fileID, test.fileSize, test.wantRF.ID, test.wantRF.Size, got.ID, got.Size)
+		}
+
+	}
+
+}
+
 func TestFileName(t *testing.T) {
 	tests := []struct {
-		file     RandomFile
+		file     *RandomFile
 		wantName string
-		wantErr  bool
 	}{
-		{RandomFile{51, 12}, "", true},
-		{RandomFile{0, 50}, "", true},
-		{RandomFile{3, 100}, "Hermes_03", false},
-		{RandomFile{12, 100}, "Hermes_12", false},
-		{RandomFile{3, 0}, "", true},
-		{RandomFile{3, 1001}, "", true},
+		{&RandomFile{3, 100}, "Hermes_03"},
+		{&RandomFile{12, 100}, "Hermes_12"},
+		{&RandomFile{9, 20}, "Hermes_09"},
 	}
 
 	for _, test := range tests {
 		got, err := test.file.FileName()
-		if err == nil {
-			if test.wantErr {
-				t.Errorf("{%v, %v}.FileName() failed expected an error got nil", test.file.ID, test.file.Size)
-			}
-			if test.wantName != got[0:9] {
-				t.Errorf("{%v, %v}.FileName() failed expected prefix %s, got %s", test.file.ID, test.file.Size, test.wantName, got[0:9])
-			}
-		} else {
-			if got != "" {
-				t.Errorf("{%v, %v}.FileName() failed expected empty string, got %s", test.file.ID, test.file.Size, got)
-			}
-			if !test.wantErr {
-				t.Errorf("{%v, %v}.FileName() failed and gave unexpected error %s", test.file.ID, test.file.Size, err.Error())
-			}
+		if err != nil {
+			t.Errorf("{%v, %v}.NewRandomFile() failed and returned an unexpected error %s", test.file.ID, test.file.Size, err.Error())
+		}
+		if got[0:9] != test.wantName {
+			t.Errorf("{%v, %v}.NewRandomFile() failed expected prefix %s got prefix %s", test.file.ID, test.file.Size, test.wantName, got[0:9])
 		}
 	}
 }
 
 func TestChecksum(t *testing.T) {
 	file := RandomFile{11, 100}
-	otherFile := RandomFile{13, 1000}
 	checksum, err := file.CheckSum()
 	if err != nil {
 		t.Error(err)
 	}
-	otherChecksum, err := otherFile.CheckSum()
+	file = RandomFile{13, 100}
+	otherChecksum, err := file.CheckSum()
 	if err != nil {
 		t.Error(err)
 	}
 	if fmt.Sprintf("%x", checksum) == fmt.Sprintf("%x", otherChecksum) {
-		t.Errorf("Checksum returned the same value for two different RandomFiles {%v, %v} and {%v, %v}", file.ID, file.Size, otherFile.ID, otherFile.Size)
+		t.Errorf("Checksum returned the same value for two different RandomFiles {%v, %v} and {%v, %v}", file.ID, file.Size, file.ID, file.Size)
 
 	}
+	file = RandomFile{11, 100}
 	checksumAgain, err := file.CheckSum()
 	if err != nil {
 		t.Error(err)
