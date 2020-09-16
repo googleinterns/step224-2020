@@ -34,35 +34,15 @@ import (
 	pb "github.com/googleinterns/step224-2020/hermes/proto"
 )
 
-// DeleteRandomFile deletes a random file in the target storage system bucket.
-// It then checks that the file has been deleted by trying to get the object.
-// Arguments:
-//	- ctx: pass the context so this probe can be cancelled if needed.
-//	- target: pass the target run information.
-//	- client: pass an initialised storage client for this target system.
-//	- logger: pass the logger associated with the probe calling this function.
-//		-> logger can log to Google Cloud if configured to do so.
-// Returns:
-//	- fileID: returns the ID of the file delete OR a missing file to be created if one is found.
-//	- err:
-//		Status:
-//		- StateJournalInconsistent: the file to be deleted does not exist in Hermes' StateJournal.
-//		- FileMissing: the file to be deleted could not be found in the target bucket.
-//		- BucketMissing: the target bucket on this target system was not found.
-//		- ProbeFailed: there was an error during one of the API calls and the probe failed.
-func DeleteRandomFile(ctx context.Context, target *probe.Target, client stiface.Client, logger *logger.Logger) (int32, error) {
-	fileID := pickFileToDelete()
-	return DeleteFile(ctx, fileID, target, client, logger)
-}
-
 // DeleteFile deletes the file, corresponding to the ID passed, in the target storage system bucket.
 // It then checks that the file has been deleted by trying to get the object.
 // Arguments:
-//	- ctx: pass the context so this probe can be cancelled if needed.
-//	- config: pass the HermesProbeDef config for the probe calling this function.
-//	- target: pass the target run information.
-//	- client: pass an initialised storage client for this target system.
-//	- logger: pass the logger associated with the probe calling this function.
+//	- ctx: context allows this probe can be cancelled if needed.
+// - fileID: ID of the file to be deleted. Must be within inclusive range: 11-50.
+//	- config: HermesProbeDef config for the probe calling this function.
+//	- target: target run information stored in struct from probe/probe.go
+//	- client: initialised storage client for this target system.
+//	- logger: logger associated with the probe calling this function.
 // Returns:
 //	- fileID: returns the ID of the file delete OR a missing file to be created if one is found.
 //	- err:
@@ -73,6 +53,10 @@ func DeleteRandomFile(ctx context.Context, target *probe.Target, client stiface.
 //		- ProbeFailed: there was an error during one of the API calls and the probe failed.
 func DeleteFile(ctx context.Context, fileID int32, target *probe.Target, client stiface.Client, logger *logger.Logger) (int32, error) {
 	bucket := target.Target.GetBucketName()
+
+	if fileID <= 10 || fileID >= 51 {
+		return fileID, fmt.Errorf("delete(%q, %q) failed; status invalidArgument: expected fileID %d to be within valid inclusive range: 11-50", bucket, fileID, fileID)
+	}
 
 	// TODO(evanSpendlove): Add custom error object to return value and modify all returns.
 	filename, ok := target.Journal.Filenames[fileID]
@@ -99,15 +83,15 @@ func DeleteFile(ctx context.Context, fileID int32, target *probe.Target, client 
 			status = m.ProbeFailed
 		}
 
-		target.LatencyMetrics.APICallLatency[m.APIDeleteFile][status].Metric("hermes_api_latency_s").AddFloat64(time.Now().Sub(start).Seconds())
+		target.LatencyMetrics.APICallLatency[m.APIDeleteFile][status].Metric("hermes_api_latency_seconds").AddFloat64(time.Now().Sub(start).Seconds())
 		return fileID, fmt.Errorf("delete(%q, %q) failed; status %v: %w", bucket, filename, status, err)
 	}
-	target.LatencyMetrics.APICallLatency[m.APIDeleteFile][m.Success].Metric("hermes_api_latency_s").AddFloat64(time.Now().Sub(start).Seconds())
+	target.LatencyMetrics.APICallLatency[m.APIDeleteFile][m.Success].Metric("hermes_api_latency_seconds").AddFloat64(time.Now().Sub(start).Seconds())
 
 	query := &storage.Query{Prefix: filename}
 	start = time.Now()
 	objects := client.Bucket(bucket).Objects(ctx, query)
-	target.LatencyMetrics.APICallLatency[m.APIListFiles][m.Success].Metric("hermes_api_latency_s").AddFloat64(time.Now().Sub(start).Seconds())
+	target.LatencyMetrics.APICallLatency[m.APIListFiles][m.Success].Metric("hermes_api_latency_seconds").AddFloat64(time.Now().Sub(start).Seconds())
 	for {
 		obj, err := objects.Next()
 		if err == iterator.Done {
@@ -130,14 +114,14 @@ func DeleteFile(ctx context.Context, fileID int32, target *probe.Target, client 
 	return fileID, nil
 }
 
-// pickFileToDelete picks which file to delete and returns the integer ID of this file.
+// PickFileToDelete picks which file to delete and returns the integer ID of this file.
 // Returns:
 //	- ID: returns the ID of the file to be deleted.
-func pickFileToDelete() int32 {
+func PickFileToDelete() int32 {
 	const (
 		begin                  = 11 // we can delete files staring from the file Hermes_11
 		numberOfDeletableFiles = 40 // there are 40 files to delete from [Hermes_11,Hermes_50]
 	)
 	rand.Seed(time.Now().UnixNano())
-	return int32(rand.Intn(numberOfDeletableFiles) + being)
+	return int32(rand.Intn(numberOfDeletableFiles) + begin)
 }

@@ -114,8 +114,8 @@ func genTestTarget(cfg *monitorpb.HermesProbeDef, t *testing.T) *probe.Target {
 	}
 }
 
-// setupMockSystem sets up the mock storage system through the fake client.
-func setupMockSystem(ctx context.Context, t *testing.T) stiface.Client {
+// setupFakeSystem sets up the fake storage system through the fake client.
+func setupFakeSystem(ctx context.Context, t *testing.T) stiface.Client {
 	client := mock.NewFakeClient()
 
 	mockBucket := client.Bucket(bucketName)
@@ -147,7 +147,7 @@ func TestDeleteRandomFile(t *testing.T) {
 	testProbeName := "testDelete1"
 	ctx := context.Background()
 
-	client := setupMockSystem(ctx, t)
+	client := setupFakeSystem(ctx, t)
 	target := genTestTarget(genTestConfig(testProbeName), t)
 
 	logger, err := logger.NewCloudproberLog(testProbeName)
@@ -155,7 +155,7 @@ func TestDeleteRandomFile(t *testing.T) {
 		t.Fatalf("error in initializing logger for the probe (%s): %v", testProbeName, err)
 	}
 
-	fileID, err := DeleteRandomFile(ctx, target, client, logger)
+	fileID, err := DeleteFile(ctx, PickFileToDelete(), target, client, logger)
 	if err != nil {
 		t.Errorf("deleteRandomFile(ID: %d) failed: expected error as %v, got %v", fileID, nil, err)
 	}
