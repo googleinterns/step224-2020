@@ -131,7 +131,7 @@ func TestCreateFile(t *testing.T) {
 
 	var err error
 	if target.LatencyMetrics, err = metrics.NewMetrics(hp, probeTarget); err != nil {
-		t.Error(err)
+		t.Fatalf("Metric set up failed due to %s", err.Error())
 	}
 
 	if err := CreateFile(ctx, target, fileID, fileSize, client, nil); err != nil {
