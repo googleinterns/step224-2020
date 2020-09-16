@@ -13,9 +13,9 @@
 // limitations under the License.
 //
 // Delete_file implements the probe operation for deleting a file in a
-// storage system.
+// storage systemetrics.
 
-// Package delete implements the file deletion operation with a storage system.
+// Package delete implements the file deletion operation with a storage systemetrics.
 package delete
 
 import (
@@ -27,10 +27,10 @@ import (
 	"cloud.google.com/go/storage"
 	"github.com/google/cloudprober/logger"
 	"github.com/googleapis/google-cloud-go-testing/storage/stiface"
+	"github.com/googleinterns/step224-2020/hermes/probe"
+	"github.com/googleinterns/step224-2020/hermes/probe/metrics"
 	"google.golang.org/api/iterator"
 
-	probe "github.com/googleinterns/step224-2020/hermes/probe"
-	m "github.com/googleinterns/step224-2020/hermes/probe/metrics"
 	pb "github.com/googleinterns/step224-2020/hermes/proto"
 )
 
@@ -44,7 +44,7 @@ import (
 //	- client: initialised storage client for this target system.
 //	- logger: logger associated with the probe calling this function.
 // Returns:
-//	- fileID: returns the ID of the file delete OR a missing file to be created if one is found.
+//	- fileID: returns the ID of the deleted file.
 //	- err:
 //		Status:
 //		- StateJournalInconsistent: the file to be deleted does not exist in Hermes' StateJournal.
@@ -61,7 +61,7 @@ func DeleteFile(ctx context.Context, fileID int32, target *probe.Target, client 
 	// TODO(evanSpendlove): Add custom error object to return value and modify all returns.
 	filename, ok := target.Journal.Filenames[fileID]
 	if !ok {
-		return fileID, fmt.Errorf("delete(%q, %q) failed; status StateJournalInconsistent: expected fileID %d to exist", bucket, filename, fileID)
+		return fileID, fmt.Errorf("StateJournalInconsistent: Journal.Filenames has no entry with file ID = %d", fileID)
 	}
 
 	target.Journal.Intent = &pb.Intent{
@@ -73,42 +73,42 @@ func DeleteFile(ctx context.Context, fileID int32, target *probe.Target, client 
 
 	start := time.Now()
 	if err := file.Delete(ctx); err != nil {
-		var status m.ExitStatus
+		var status metrics.ExitStatus
 		switch err {
 		case storage.ErrObjectNotExist:
-			status = m.FileMissing
+			status = metrics.FileMissing
 		case storage.ErrBucketNotExist:
-			status = m.BucketMissing
+			status = metrics.BucketMissing
 		default:
-			status = m.ProbeFailed
+			status = metrics.ProbeFailed
 		}
 
-		target.LatencyMetrics.APICallLatency[m.APIDeleteFile][status].Metric("hermes_api_latency_seconds").AddFloat64(time.Now().Sub(start).Seconds())
+		target.LatencyMetrics.APICallLatency[metrics.APIDeleteFile][status].Metric("hermes_api_latency_seconds").AddFloat64(time.Now().Sub(start).Seconds())
 		return fileID, fmt.Errorf("delete(%q, %q) failed; status %v: %w", bucket, filename, status, err)
 	}
-	target.LatencyMetrics.APICallLatency[m.APIDeleteFile][m.Success].Metric("hermes_api_latency_seconds").AddFloat64(time.Now().Sub(start).Seconds())
+	target.LatencyMetrics.APICallLatency[metrics.APIDeleteFile][metrics.Success].Metric("hermes_api_latency_seconds").AddFloat64(time.Now().Sub(start).Seconds())
 
 	query := &storage.Query{Prefix: filename}
 	start = time.Now()
 	objects := client.Bucket(bucket).Objects(ctx, query)
-	target.LatencyMetrics.APICallLatency[m.APIListFiles][m.Success].Metric("hermes_api_latency_seconds").AddFloat64(time.Now().Sub(start).Seconds())
+	target.LatencyMetrics.APICallLatency[metrics.APIListFiles][metrics.Success].Metric("hermes_api_latency_seconds").AddFloat64(time.Now().Sub(start).Seconds())
 	for {
 		obj, err := objects.Next()
 		if err == iterator.Done {
 			break
 		}
 		if obj.Name == filename {
-			status := m.ProbeFailed
+			status := metrics.ProbeFailed
 			return fileID, fmt.Errorf("delete(%q, %q) failed; status %v: object %v still listed after delete", bucket, filename, status, obj.Name)
 		}
 		if err != nil {
-			status := m.BucketMissing
+			status := metrics.BucketMissing
 			return fileID, fmt.Errorf("delete(%q, %q) failed; status %v: %w", bucket, filename, status, err)
 		}
 	}
 
 	// Update in-memory NIL file after delete operation.
-	delete(target.Journal.Filenames, int32(fileID))
+	delete(target.Journal.Filenames, fileID)
 
 	logger.Infof("Object %v deleted in bucket %s.", file, bucket)
 	return fileID, nil

@@ -120,22 +120,19 @@ func setupFakeSystem(ctx context.Context, t *testing.T) stiface.Client {
 
 	mockBucket := client.Bucket(bucketName)
 	if err := mockBucket.Create(ctx, "", nil); err != nil {
-		t.Fatalf("could not create mock bucket when setting up mock storage system, err: %v", err)
+		t.Fatalf("failed to create mock bucket, err: %v", err)
 	}
 
 	for i := firstID; i <= lastID; i++ {
-		var id string
-		if i <= 9 {
-			id = fmt.Sprintf("0%d", i)
-		} else {
-			id = fmt.Sprintf("%d", i)
-		}
-		filename := fmt.Sprintf("Hermes_%s_%s", id, hash)
+		filename := fmt.Sprintf("Hermes_%02d_%s", i, hash)
 
 		writer := client.Bucket(bucketName).Object(filename).NewWriter(ctx)
 		n, err := writer.Write([]byte(contents))
-		if err != nil || n != len([]byte(contents)) {
-			t.Fatalf("failed to create file during setup of mock storage system, err: %v", err)
+		if err != nil {
+			t.Fatalf("failed to create file, : %v", err)
+		}
+		if n != len([]byte(contents)) {
+			t.Fatalf("short write: wrote %d butes; wanted %d", n, len([]byte(contents)))
 		}
 		writer.Close()
 	}
@@ -152,7 +149,7 @@ func TestDeleteRandomFile(t *testing.T) {
 
 	logger, err := logger.NewCloudproberLog(testProbeName)
 	if err != nil {
-		t.Fatalf("error in initializing logger for the probe (%s): %v", testProbeName, err)
+		t.Fatalf("failed to initialise logger: %v", err)
 	}
 
 	fileID, err := DeleteFile(ctx, PickFileToDelete(), target, client, logger)
@@ -170,7 +167,7 @@ func TestDeleteRandomFile(t *testing.T) {
 			t.Errorf("deleteRandomFile failed, expected object to be deleted, got object found.")
 		}
 		if err != nil {
-			t.Errorf("deleteRandomFile failed, expected %v, got %v", nil, err)
+			t.Fatalf("deleteRandomFile failed, expected %v, got %v", nil, err)
 		}
 	}
 }
