@@ -38,6 +38,12 @@ type fakeWriter struct {
 	buf bytes.Buffer
 }
 
+type fakeObjectIterator struct {                                                                                                                                    
+	idx  int                                                                                                                                                 
+	objects map[int]*storage.ObjectAttrs                                                                                                                        
+	stiface.ObjectIterator                                                                                                                                      
+}  
+
 func NewFakeClient() stiface.Client {
 	return &fakeClient{buckets: map[string]*fakeBucket{}}
 }
