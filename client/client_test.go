@@ -30,7 +30,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/google/cloudprober"
 	"github.com/google/cloudprober/examples/extensions/myprober/myprobe"
-	"github.com/googleinterns/step224-2020/hermes"
 
 	probes_configpb "github.com/google/cloudprober/probes/proto"
 	targetspb "github.com/google/cloudprober/targets/proto"
@@ -42,9 +41,8 @@ const (
 	testRunCount      int    = 20
 )
 
-func setupCloudproberAndClient(t *testing.T) (context.Context, *hermes.Hermes, *CloudproberClient) {
+func setupCloudproberAndClient(t *testing.T) (context.Context, *CloudproberClient) {
 	t.Helper()
-	testHermes := &hermes.Hermes{}
 	if err := cloudprober.InitFromConfig(cloudproberConfig); err != nil {
 		t.Fatalf("Cloudprober could not be initialised, err: %v", err)
 	}
@@ -56,10 +54,10 @@ func setupCloudproberAndClient(t *testing.T) (context.Context, *hermes.Hermes, *
 		t.Fatalf("Cloudprober gRPC Client could not be initialised: %v", err)
 	}
 
-	return context.Background(), testHermes, client
+	return context.Background(), client
 }
 
-func teardownCloudproberAndClient(ctx context.Context, t *testing.T, testHermes *hermes.Hermes, client *CloudproberClient) {
+func teardownCloudproberAndClient(ctx context.Context, t *testing.T, client *CloudproberClient) {
 	// TODO(evanSpendlove): Find a safe way to close down Cloudprober and restart it.
 	// Check if the probe was added correctly
 	t.Helper()
@@ -97,8 +95,8 @@ func generateRedisProbeDef(name string) *probes_configpb.ProbeDef {
 
 // TestRegisterAndAddProbe tests that an extension probe type can be registered and added to Cloudprober without error.
 func TestRegisterAndAddProbe(t *testing.T) {
-	ctx, testHermes, client := setupCloudproberAndClient(t)
-	defer teardownCloudproberAndClient(ctx, t, testHermes, client)
+	ctx, client := setupCloudproberAndClient(t)
+	defer teardownCloudproberAndClient(ctx, t, client)
 
 	for i := 0; i < testRunCount; i++ {
 		probeName := fmt.Sprintf("testExtension%d", i)
@@ -120,8 +118,8 @@ func TestRegisterAndAddProbe(t *testing.T) {
 
 // TestRemoveProbe tests that the RemoveProbe() method removes a probe from Cloudprober
 func TestRemoveProbe(t *testing.T) {
-	ctx, testHermes, client := setupCloudproberAndClient(t)
-	defer teardownCloudproberAndClient(ctx, t, testHermes, client)
+	ctx, client := setupCloudproberAndClient(t)
+	defer teardownCloudproberAndClient(ctx, t, client)
 
 	for i := 0; i < testRunCount; i++ {
 		probeName := fmt.Sprintf("testExtension%d", i)
@@ -157,8 +155,8 @@ func TestRemoveProbe(t *testing.T) {
 
 // TestListProbes tests that the ListProbes() method returns all active probes in Cloudprober
 func TestListProbes(t *testing.T) {
-	ctx, testHermes, client := setupCloudproberAndClient(t)
-	defer teardownCloudproberAndClient(ctx, t, testHermes, client)
+	ctx, client := setupCloudproberAndClient(t)
+	defer teardownCloudproberAndClient(ctx, t, client)
 
 	for i := 0; i < testRunCount; i++ {
 		probeName := fmt.Sprintf("testExtension%d", i)

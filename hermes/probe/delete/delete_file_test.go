@@ -20,114 +20,134 @@ package delete
 
 import (
 	"context"
+	"fmt"
 	"testing"
-	"time"
 
-	"cloud.google.com/go/storage"
 	"github.com/golang/protobuf/proto"
 	"github.com/google/cloudprober/logger"
-	"github.com/google/cloudprober/probes/options"
 	"github.com/googleapis/google-cloud-go-testing/storage/stiface"
 	"github.com/googleinterns/step224-2020/hermes/probe"
+	"github.com/googleinterns/step224-2020/hermes/probe/mock"
 
 	metricpb "github.com/google/cloudprober/metrics/proto"
-	probes_configpb "github.com/google/cloudprober/probes/proto"
 	monitorpb "github.com/googleinterns/step224-2020/config/proto"
+	m "github.com/googleinterns/step224-2020/hermes/probe/metrics"
 	journalpb "github.com/googleinterns/step224-2020/hermes/proto"
 )
 
-// GenTestConfig generates a test HermesProbeDef proto config for
-// initialising and running a MonitorProbe.
+// genTestConfig generates a test HermesProbeDef proto config.
 // Arguments:
 //	- name: pass the name for this probe instance.
 // Returns:
-//	- probeDef: a test probe config with a HermesProbeDef extension set.
 //	- hermesExtension: returns the HermesProbeDef extension.
-func GenTestConfig(name string) (*probes_configpb.ProbeDef, *monitorpb.HermesProbeDef) {
-	probeDef := &probes_configpb.ProbeDef{
-		Name: proto.String(name),
-		Type: probes_configpb.ProbeDef_EXTENSION.Enum(),
-	}
-
+func genTestConfig(name string) *monitorpb.HermesProbeDef {
 	hermesExtension := &monitorpb.HermesProbeDef{
 		ProbeName: proto.String(name),
 		Targets: []*monitorpb.Target{
-			&monitorpb.Target{
-				Name:                   "hermes",
-				TargetSystem:           monitorpb.Target_GOOGLE_CLOUD_STORAGE,
-				TotalSpaceAllocatedMib: int64(100),
-				BucketName:             "test_bucket_5",
-			},
+			genTargetPb(),
 		},
 		TargetSystem: monitorpb.HermesProbeDef_GCS.Enum(),
 		IntervalSec:  proto.Int32(3600),
 		TimeoutSec:   proto.Int32(60),
 		ProbeLatencyDistribution: &metricpb.Dist{
 			Buckets: &metricpb.Dist_ExplicitBuckets{
-				ExplicitBuckets: "0.1, 0.2, 0.4, 0.6 0.8, 1.6, 3.2, 6.4, 12.8, 1000",
+				ExplicitBuckets: "0.1,0.2,0.4,0.6,0.8,1.6,3.2,6.4,12.8,1000",
 			},
 		},
 		ApiCallLatencyDistribution: &metricpb.Dist{
 			Buckets: &metricpb.Dist_ExplicitBuckets{
-				ExplicitBuckets: "0.000000002, 0.000000004, 0.000000008, 0.000000016, 0.00000032, 0.000000064, 0.000000128, 100",
+				ExplicitBuckets: "0.000000002,0.000000004,0.000000008,0.000000016,0.00000032,0.000000064,0.000000128,100",
 			},
 		},
 	}
-	proto.SetExtension(probeDef, monitorpb.E_HermesProbeDef_HermesProbeDef, hermesExtension)
-	return probeDef, hermesExtension
+	return hermesExtension
 }
 
-// GenOptsFromConfig generates the options for the MonitorProbe
-// from the probe config passed.
-// Arguments:
-//	- t: testing object for throwing errors
-//	- cfg: probe config.
-// Returns:
-//	- opts: options for a probe generated from the probe config.
-func GenOptsFromConfig(t *testing.T, cfg *monitorpb.HermesProbeDef) *options.Options {
-	opts := &options.Options{
-		Interval: time.Duration(cfg.GetIntervalSec()) * time.Second,
-		Timeout:  time.Duration(cfg.GetTimeoutSec()) * time.Second,
+func genTargetPb() *monitorpb.Target {
+	return &monitorpb.Target{
+		Name:                   "hermes",
+		TargetSystem:           monitorpb.Target_GOOGLE_CLOUD_STORAGE,
+		TotalSpaceAllocatedMib: int64(100),
+		BucketName:             bucketName,
 	}
-
-	var err error
-	if opts.Logger, err = logger.NewCloudproberLog(cfg.GetProbeName()); err != nil {
-		t.Fatalf("error in initializing logger for the probe (%s): %v", cfg.GetProbeName(), err)
-	}
-
-	opts.ProbeConf = cfg
-
-	return opts
 }
 
-func GenTargetFromConfig(cfg *monitorpb.HermesProbeDef) *probe.Target {
+const (
+	firstID    = int32(1)
+	lastID     = int32(50)
+	contents   = "abc123"
+	hash       = "6367c48dd193d56ea7b0baad25b19455e529f5ee"
+	bucketName = "test_bucket_5"
+)
+
+func genTestTarget(cfg *monitorpb.HermesProbeDef, t *testing.T) *probe.Target {
+	filenames := make(map[int32]string)
+
+	for i := firstID; i <= lastID; i++ {
+		var id string
+		if i <= 9 {
+			id = fmt.Sprintf("0%d", i)
+		} else {
+			id = fmt.Sprintf("%d", i)
+		}
+		filenames[i] = fmt.Sprintf("Hermes_%s_%s", id, hash)
+	}
+
+	metrics, err := m.NewMetrics(cfg, genTargetPb())
+	if err != nil {
+		t.Fatalf("could not initialise metrics using config and target provided, err: %v", err)
+	}
+
 	return &probe.Target{
 		Target: cfg.GetTargets()[0],
 		Journal: &journalpb.StateJournal{
 			Intent:    &journalpb.Intent{},
-			Filenames: make(map[int32]string),
+			Filenames: filenames,
 		},
+		LatencyMetrics: metrics,
 	}
 }
 
+func setupMockSystem(ctx context.Context, t *testing.T) stiface.Client {
+	client := mock.NewFakeClient()
+
+	mockBucket := client.Bucket(bucketName)
+	if err := mockBucket.Create(ctx, "", nil); err != nil {
+		t.Fatalf("could not create mock bucket when setting up mock storage system, err: %v", err)
+	}
+
+	for i := firstID; i <= lastID; i++ {
+		var id string
+		if i <= 9 {
+			id = fmt.Sprintf("0%d", i)
+		} else {
+			id = fmt.Sprintf("%d", i)
+		}
+		filename := fmt.Sprintf("Hermes_%s_%s", id, hash)
+
+		writer := client.Bucket(bucketName).Object(filename).NewWriter(ctx)
+		n, err := writer.Write([]byte(contents))
+		if err != nil || n != len([]byte(contents)) {
+			t.Errorf("failed to create file during setup of mock storage system, err: %v", err)
+		}
+		writer.Close()
+	}
+
+	return client
+}
+
 func TestDeleteRandomFile(t *testing.T) {
+	testProbeName := "testDelete1"
 	ctx := context.Background()
-	c, err := storage.NewClient(ctx)
+
+	client := setupMockSystem(ctx, t)
+
+	logger, err := logger.NewCloudproberLog(testProbeName)
 	if err != nil {
-		t.Fatalf("client conn failed: could not connect to storage system with client: %v", err)
+		t.Fatalf("error in initializing logger for the probe (%s): %v", testProbeName, err)
 	}
 
-	client := stiface.AdaptClient(c) // TODO(evanSpendlove): Use fakeClient instead
-
-	mp := &probe.Probe{}
-
-	_, cfg := GenTestConfig("testMonitorProbe1")
-	opts := GenOptsFromConfig(t, cfg)
-	if err := mp.Init("testMonitorProbe1", opts); err != nil {
-		t.Errorf("error when calling Init() on MonitorProbe object: wanted %v, got %v for error return value", nil, err)
-	}
-
-	fileID, err := DeleteRandomFile(ctx, GenTargetFromConfig(cfg), &client, opts.Logger)
+	fileID, err := DeleteRandomFile(ctx, genTestTarget(genTestConfig(testProbeName), t), client, logger)
 	if err != nil {
 		t.Errorf("deleteRandomFile(ID: %d) failed: expected error as %v, got %v", fileID, nil, err)
 	}

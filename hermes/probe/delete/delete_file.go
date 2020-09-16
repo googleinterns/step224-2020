@@ -31,12 +31,12 @@ import (
 
 	probe "github.com/googleinterns/step224-2020/hermes/probe"
 	m "github.com/googleinterns/step224-2020/hermes/probe/metrics"
+	pb "github.com/googleinterns/step224-2020/hermes/proto"
 )
 
 // DeleteRandomFile deletes a random file in the target storage system bucket.
 // It then checks that the file has been deleted by trying to get the object.
 // Arguments:
-// TODO(evanSpendlove): Update comment here
 //	- ctx: pass the context so this probe can be cancelled if needed.
 //	- target: pass the target run information.
 //	- client: pass an initialised storage client for this target system.
@@ -45,13 +45,12 @@ import (
 // Returns:
 //	- fileID: returns the ID of the file delete OR a missing file to be created if one is found.
 //	- err:
-//		- [...].hermes_file_missing: the file to be deleted does not exist in Hermes' StateJournal.
-//		- [...].file_missing: the file to be deleted could not be found in the target bucket.
-//		- [...].bucket_missing: the target bucket on this target system was not found.
-//		- [...].probe_failed: there was an error during one of the API calls and the probe failed.
-//		- [...].deleted_file_found: the file was deleted but it is still found in the target bucket.
-//		- [...].list_bucket_failed: the listBucket operation failed when checking if the target file was deleted.
-func DeleteRandomFile(ctx context.Context, target *probe.Target, client *stiface.Client, logger *logger.Logger) (int32, error) {
+//		Status:
+//		- StateJournalInconsistent: the file to be deleted does not exist in Hermes' StateJournal.
+//		- FileMissing: the file to be deleted could not be found in the target bucket.
+//		- BucketMissing: the target bucket on this target system was not found.
+//		- ProbeFailed: there was an error during one of the API calls and the probe failed.
+func DeleteRandomFile(ctx context.Context, target *probe.Target, client stiface.Client, logger *logger.Logger) (int32, error) {
 	fileID := pickFileToDelete()
 	return DeleteFile(ctx, fileID, target, client, logger)
 }
@@ -59,7 +58,6 @@ func DeleteRandomFile(ctx context.Context, target *probe.Target, client *stiface
 // DeleteFile deletes the file, corresponding to the ID passed, in the target storage system bucket.
 // It then checks that the file has been deleted by trying to get the object.
 // Arguments:
-// TODO(evanSpendlove): Update comment here
 //	- ctx: pass the context so this probe can be cancelled if needed.
 //	- config: pass the HermesProbeDef config for the probe calling this function.
 //	- target: pass the target run information.
@@ -68,21 +66,26 @@ func DeleteRandomFile(ctx context.Context, target *probe.Target, client *stiface
 // Returns:
 //	- fileID: returns the ID of the file delete OR a missing file to be created if one is found.
 //	- err:
-//		- [...].hermes_file_missing: the file to be deleted does not exist in Hermes' StateJournal.
-//		- [...].file_missing: the file to be deleted could not be found in the target bucket.
-//		- [...].bucket_missing: the target bucket on this target system was not found.
-//		- [...].probe_failed: there was an error during one of the API calls and the probe failed.
-//		- [...].deleted_file_found: the file was deleted but it is still found in the target bucket.
-//		- [...].list_bucket_failed: the listBucket operation failed when checking if the target file was deleted.
-func DeleteFile(ctx context.Context, fileID int32, target *probe.Target, client *stiface.Client, logger *logger.Logger) (int32, error) {
+//		Status:
+//		- StateJournalInconsistent: the file to be deleted does not exist in Hermes' StateJournal.
+//		- FileMissing: the file to be deleted could not be found in the target bucket.
+//		- BucketMissing: the target bucket on this target system was not found.
+//		- ProbeFailed: there was an error during one of the API calls and the probe failed.
+func DeleteFile(ctx context.Context, fileID int32, target *probe.Target, client stiface.Client, logger *logger.Logger) (int32, error) {
 	bucket := target.Target.GetBucketName()
 
+	// TODO(evanSpendlove): Add custom error object to return value and modify all returns.
 	filename, ok := target.Journal.Filenames[fileID]
 	if !ok {
-		return fileID, fmt.Errorf("deleteRandomFile(id: %d).hermes_file_missing: could not delete file %s, file not found", fileID, filename)
+		return fileID, fmt.Errorf("delete(%q, %q) failed; status StateJournalInconsistent: expected fileID %d to exist", bucket, filename, fileID)
 	}
 
-	file := (*client).Bucket(bucket).Object(filename)
+	target.Journal.Intent = &pb.Intent{
+		FileOperation: pb.Intent_CREATE,
+		Filename:      filename,
+	}
+
+	file := client.Bucket(bucket).Object(filename)
 
 	start := time.Now()
 	if err := file.Delete(ctx); err != nil {
@@ -96,25 +99,27 @@ func DeleteFile(ctx context.Context, fileID int32, target *probe.Target, client 
 			status = m.ProbeFailed
 		}
 
-		target.LatencyMetrics.APICallLatency[m.APIDeleteFile][status].Metric("latency").AddFloat64(time.Now().Sub(start).Seconds())
-		return fileID, fmt.Errorf("deleteRandomFile(id: %d).%v: could not delete file %s: %w", fileID, status, filename, err)
+		target.LatencyMetrics.APICallLatency[m.APIDeleteFile][status].Metric("latency_s").AddFloat64(time.Now().Sub(start).Seconds())
+		return fileID, fmt.Errorf("delete(%q, %q) failed; status %v: %w", bucket, filename, status, err)
 	}
-	target.LatencyMetrics.APICallLatency[m.APIDeleteFile][m.Success].Metric("latency").AddFloat64(time.Now().Sub(start).Seconds())
+	target.LatencyMetrics.APICallLatency[m.APIDeleteFile][m.Success].Metric("latency_s").AddFloat64(time.Now().Sub(start).Seconds())
 
 	query := &storage.Query{Prefix: filename}
 	start = time.Now()
-	objects := (*client).Bucket(bucket).Objects(ctx, query)
-	target.LatencyMetrics.APICallLatency[m.APIListFiles][m.Success].Metric("latency").AddFloat64(time.Now().Sub(start).Seconds())
+	objects := client.Bucket(bucket).Objects(ctx, query)
+	target.LatencyMetrics.APICallLatency[m.APIListFiles][m.Success].Metric("latency_s").AddFloat64(time.Now().Sub(start).Seconds())
 	for {
 		obj, err := objects.Next()
-		if obj.Name == filename {
-			return fileID, fmt.Errorf("deleteRandomFile(id %d).deleted_file_found: object %v in bucket %q still listed after delete", fileID, *obj, bucket)
-		}
 		if err == iterator.Done {
 			break
 		}
+		if obj.Name == filename {
+			status := m.ProbeFailed
+			return fileID, fmt.Errorf("delete(%q, %q) failed; status %v: object %v still listed after delete", bucket, filename, status, obj.Name)
+		}
 		if err != nil {
-			return fileID, fmt.Errorf("deleteRandomFile(id: %d).list_bucket_failed: unable to list bucket %q: %w", fileID, bucket, err)
+			status := m.BucketMissing
+			return fileID, fmt.Errorf("delete(%q, %q) failed; status %v: %w", bucket, filename, status, err)
 		}
 	}
 
