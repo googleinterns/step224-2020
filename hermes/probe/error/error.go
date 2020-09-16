@@ -22,6 +22,7 @@
 package error
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/googleinterns/step224-2020/hermes/probe/metrics"
@@ -29,30 +30,30 @@ import (
 
 // ProbeError is an error that includes an exit status for used within Hermes.
 type ProbeError struct {
+	// TODO(evanSpendlove): Refactor metrics.ExitStatus to use something similar to metrics.APICallStatus.
 	Status metrics.ExitStatus
 	Err    error
 }
 
-// Wrap returns a new ProbeError containing the error passed
+// New returns a new ProbeError containing the error passed
 // with additional context.and the status.
 // Arguments:
 //	- status: pass the exit status associated with this error.
-//	- msg: pass the additional context of the error as a string.
 //	- innner: pass the inner error to be wrapped.
 // Returns:
 //	- ProbeError: returns a new ProbeError object containing the args passed.
-func Wrap(status metrics.ExitStatus, msg string, inner error) ProbeError {
+func New(status metrics.ExitStatus, inner error) *ProbeError {
 	return &ProbeError{
 		Status: status,
-		Err:    fmt.Errorf("%s: %w", msg, inner),
+		Err:    inner,
 	}
 }
 
-// Error() returns the error string from the error.
+// Error returns the error string from the error.
 // Returns:
 //	- string: returns the error as a string.
 func (e *ProbeError) Error() string {
-	return fmt.Errorf("%v: %s: %w", e.Status, e.Msg, e.Inner)
+	return fmt.Sprintf("%v: %v", e.Status, e.Err)
 }
 
 // Is returns true if the argument matches this object.
