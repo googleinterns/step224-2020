@@ -1,14 +1,15 @@
-package mock
+package fakegcs
 
 import (
 	"bytes"
 	"context"
 	"fmt"
+	"strings"
 
+	"google.golang.org/api/iterator"
 	"cloud.google.com/go/storage"
 	"github.com/googleapis/google-cloud-go-testing/storage/stiface"
 )
-
 type fakeBucket struct {
 	attrs   *storage.BucketAttrs
 	objects map[string][]byte
@@ -44,7 +45,12 @@ type fakeObjectIterator struct {
 	stiface.ObjectIterator                                                                                                                                      
 }  
 
-func NewFakeClient() stiface.Client {
+type fakeReader struct {
+	stiface.Reader
+	r *bytes.Reader
+}
+
+func NewClient() stiface.Client {
 	return &fakeClient{buckets: map[string]*fakeBucket{}}
 }
 
@@ -109,6 +115,10 @@ func (w *fakeWriter) Write(data []byte) (int, error) {
 	return w.buf.Write(data)
 }
 
+func (r fakeReader) Read(buf []byte) (int, error) {
+	return r.r.Read(buf)
+}
+
 func (b fakeBucketHandle) Attrs(context.Context) (*storage.BucketAttrs, error) {
 	bkt, ok := b.c.buckets[b.name]
 	if !ok {
@@ -124,4 +134,20 @@ func (w *fakeWriter) Close() error {
 	}
 	bkt.objects[w.obj.name] = w.buf.Bytes()
 	return nil
+}
+
+func (r fakeReader) Close() error {
+	return nil
+}
+
+func (o fakeObjectHandle) NewReader(context.Context) (stiface.Reader, error) {
+	bkt, ok := o.c.buckets[o.bucketName]
+	if !ok {
+		return nil, fmt.Errorf("bucket %q not found", o.bucketName)
+	}
+	contents, ok := bkt.objects[o.name]
+	if !ok {
+		return nil, fmt.Errorf("object %q not found in bucket %q", o.name, o.bucketName)
+	}
+	return fakeReader{r: bytes.NewReader(contents)}, nil
 }
