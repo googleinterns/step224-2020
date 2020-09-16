@@ -1,5 +1,6 @@
 // TODO (#70) add license header and author line
 // TODO (#68) add doc strings
+// TODO (#72) change error types and error messages
 
 package create
 
@@ -61,10 +62,10 @@ func TestFileName(t *testing.T) {
 	for _, test := range tests {
 		got, err := test.file.FileName()
 		if err != nil {
-			t.Errorf("{%v, %v}.NewRandomFile() failed and returned an unexpected error %s", test.file.ID, test.file.Size, err.Error())
+			t.Errorf("{%v, %v}.FileName() failed and returned an unexpected error %s", test.file.ID, test.file.Size, err.Error())
 		}
 		if got[0:9] != test.wantName {
-			t.Errorf("{%v, %v}.NewRandomFile() failed expected prefix %s got prefix %s", test.file.ID, test.file.Size, test.wantName, got[0:9])
+			t.Errorf("{%v, %v}.FileName() failed expected prefix %s got prefix %s", test.file.ID, test.file.Size, test.wantName, got[0:9])
 		}
 	}
 }
@@ -99,7 +100,7 @@ func TestCreateFile(t *testing.T) {
 	bucketName := "test_bucket_probe0"
 	client := fakegcs.NewClient()
 	fbh := client.Bucket(bucketName)                         // fakeBucketHandle
-	if err := fbh.Create(ctx, bucketName, nil); err != nil { // creates the bucket with name "test_bucket_probe0"
+	if err := fbh.Create(ctx, bucketName, nil); err != nil {  // creates the bucket with name "test_bucket_probe0"
 		t.Error(err)
 	}
 	fileID := int32(6)
@@ -156,3 +157,4 @@ func TestCreateFile(t *testing.T) {
 		t.Error(err)
 	}
 }
+
