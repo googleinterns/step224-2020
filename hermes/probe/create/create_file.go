@@ -1,5 +1,6 @@
 // TODO (#70) add license header and author line
 // TODO (#68) add doc strings
+// TODO (#72) change error types and error messages
 
 package create
 
@@ -132,6 +133,7 @@ func CreateFile(ctx context.Context, target *probe.Target, fileID int32, fileSiz
 		return fmt.Errorf("CreateFile(id: %d).%v: could not create file %s: %w", fileID, status, fileName, err)
 	}
 	if err := wc.Close(); err != nil {
+		target.LatencyMetrics.APICallLatency[m.APICreateFile][m.WriterCloseFailed].Metric("hermes_api_latency_s").AddFloat64(time.Now().Sub(start).Seconds())
 		return fmt.Errorf("Writer.Close: %v", err)
 	}
 	target.LatencyMetrics.APICallLatency[m.APICreateFile][m.Success].Metric("hermes_api_latency_s").AddFloat64(time.Now().Sub(start).Seconds())
