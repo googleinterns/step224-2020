@@ -5,136 +5,149 @@ package create
 
 import (
 	"context"
+	"crypto/sha1"
 	"fmt"
-	"testing"
+	"io"
+	"math/rand"
+	"time"
 
-	"github.com/golang/protobuf/proto"
+	"cloud.google.com/go/storage"
+	"github.com/google/cloudprober/logger"
+	"github.com/googleapis/google-cloud-go-testing/storage/stiface"
 	"github.com/googleinterns/step224-2020/hermes/probe"
-	"github.com/googleinterns/step224-2020/hermes/probe/fakegcs"
-	"github.com/googleinterns/step224-2020/hermes/probe/metrics"
 
-	metricpb "github.com/google/cloudprober/metrics/proto"
-	probepb "github.com/googleinterns/step224-2020/config/proto"
+	m "github.com/googleinterns/step224-2020/hermes/probe/metrics"
 	journalpb "github.com/googleinterns/step224-2020/hermes/proto"
 )
 
-func TestFileName(t *testing.T) {
-	tests := []struct {
-		file     RandomFile
-		wantName string
-		wantErr  bool
-	}{
-		{RandomFile{51, 12}, "", true},
-		{RandomFile{0, 50}, "", true},
-		{RandomFile{3, 100}, "Hermes_03", false},
-		{RandomFile{12, 100}, "Hermes_12", false},
-		{RandomFile{3, 0}, "", true},
-		{RandomFile{3, 1001}, "", true},
-	}
+const (
+	begin            = 1    // ID of the first HermesFile
+	end              = 50   // ID of the last HermesFile
+	maxFileSizeBytes = 1000 // maximum allowed file size in bytes
+)
 
-	for _, test := range tests {
-		got, err := test.file.FileName()
-		if err == nil {
-			if test.wantErr {
-				t.Errorf("{%v, %v}.FileName() failed expected an error got nil", test.file.ID, test.file.Size)
-			}
-			if test.wantName != got[0:9] {
-				t.Errorf("{%v, %v}.FileName() failed expected prefix %s, got %s", test.file.ID, test.file.Size, test.wantName, got[0:9])
-			}
-		} else {
-			if got != "" {
-				t.Errorf("{%v, %v}.FileName() failed expected empty string, got %s", test.file.ID, test.file.Size, got)
-			}
-			if !test.wantErr {
-				t.Errorf("{%v, %v}.FileName() failed and gave unexpected error %s", test.file.ID, test.file.Size, err.Error())
-			}
+type RandomFile struct {
+	ID   int64 // ID is a positive integer in the range [1,50]
+	Size int   // File size in bytes
+}
+
+type randomFileReader struct {
+	size int // size in bytes
+	i    int // currently reading this byte
+	rand *rand.Rand
+}
+
+func (r *randomFileReader) readDone() bool {
+	return r.i >= r.size
+}
+
+func (r *randomFileReader) bytesLeft() int {
+	return (r.size - r.i)
+}
+
+func (r *randomFileReader) bufferTooLong(buf []byte) bool {
+	return len(buf) > r.bytesLeft()
+}
+
+func (r *randomFileReader) Read(buf []byte) (n int, err error) {
+	if r.readDone() {
+		return 0, io.EOF
+	}
+	b := buf
+	if r.bufferTooLong(b) {
+		b = buf[:r.bytesLeft()]
+	}
+	n, err = r.rand.Read(b) // n is the length  of the buffer
+	if err != nil {
+		return n, err // in this case n=0 and we return 0 as nil can't be returned as a type int argument
+	}
+	r.i += n
+	return n, err
+}
+
+// Warning: NewReader is not thread safe
+func (f *RandomFile) NewReader() *randomFileReader {
+	// ID will serve as a Seed and i - index of the currently read byte  will be set to 0 automatically in the returned reader
+	return &randomFileReader{size: f.Size, rand: rand.New(rand.NewSource(f.ID))}
+}
+
+func (f *RandomFile) CheckSum() ([]byte, error) {
+	r := f.NewReader()
+	h := sha1.New()
+	if _, err := io.Copy(h, r); err != nil {
+		return nil, fmt.Errorf("io.Copy: %v", err)
+	}
+	// returns checksum in hex notation
+	return h.Sum(nil), nil
+}
+
+func (f *RandomFile) FileName() (string, error) {
+	if f.ID < begin || f.ID > end {
+		return "", fmt.Errorf("The file ID provided %v wasn't in the required range [1,50]", f.ID)
+	}
+	if f.Size > maxFileSizeBytes {
+		return "", fmt.Errorf("The file size provided %v bytes exceeded the limit %v bytes", f.Size, maxFileSizeBytes)
+	}
+	if f.Size <= 0 {
+		return "", fmt.Errorf("The file size provided %v is not a positive number as required", f.Size)
+	}
+	checksum, err := f.CheckSum()
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("Hermes_%02d_%v", f.ID, fmt.Sprintf("%x", checksum)), nil
+}
+
+func CreateFile(ctx context.Context, target *probe.Target, fileID int32, fileSize int, client stiface.Client, logger *logger.Logger) error {
+	f := RandomFile{ID: int64(fileID), Size: fileSize}
+	bucketName := target.Target.GetBucketName()
+	fileName, err := f.FileName()
+	if err != nil {
+		return err
+	}
+	target.Journal.Intent = &journalpb.Intent{FileOperation: journalpb.Intent_CREATE, Filename: fileName}
+	if _, ok := target.Journal.Filenames[fileID]; ok {
+		var status m.ExitStatus
+		status = m.UnknownFileFound
+		return fmt.Errorf("CreateFile(ID: %d).%v could not create file as file with this ID already exists", fileID, status)
+	}
+	r := f.NewReader()
+	start := time.Now()
+	wc := client.Bucket(bucketName).Object(fileName).NewWriter(ctx)
+	if _, err = io.Copy(wc, r); err != nil {
+		var status m.ExitStatus
+		switch err {
+		case storage.ErrBucketNotExist:
+			status = m.BucketMissing
+		default:
+			status = m.ProbeFailed
 		}
+		target.LatencyMetrics.APICallLatency[m.APICreateFile][status].Metric("hermes_api_latency_s").AddFloat64(time.Now().Sub(start).Seconds())
+		return fmt.Errorf("CreateFile(id: %d).%v: could not create file %s: %w", fileID, status, fileName, err)
 	}
-}
-
-func TestChecksum(t *testing.T) {
-	file := RandomFile{11, 100}
-	otherFile := RandomFile{13, 1000}
-	checksum, err := file.CheckSum()
+	if err := wc.Close(); err != nil {
+		return fmt.Errorf("Writer.Close: %v", err)
+	}
+	target.LatencyMetrics.APICallLatency[m.APICreateFile][m.Success].Metric("hermes_api_latency_s").AddFloat64(time.Now().Sub(start).Seconds())
+	prefix := fileName[0:9]
+	query := &storage.Query{Prefix: prefix}
+	start = time.Now()
+	objIter := client.Bucket(bucketName).Objects(ctx, query)
+	end := time.Now()
+	obj, err := objIter.Next()
 	if err != nil {
-		t.Error(err)
+		target.LatencyMetrics.APICallLatency[m.APIListFiles][m.FileMissing].Metric("hermes_api_latency_s").AddFloat64(end.Sub(start).Seconds())
+		return fmt.Errorf("CreateFile check failed: %w", err)
 	}
-	otherChecksum, err := otherFile.CheckSum()
-	if err != nil {
-		t.Error(err)
+	if obj.Name != fileName {
+		fmt.Errorf("CreateFile check failed expected file name present %v got %v", fileName, obj.Name)
 	}
-	if fmt.Sprintf("%x", checksum) == fmt.Sprintf("%x", otherChecksum) {
-		t.Errorf("Checksum returned the same value for two different RandomFiles {%v, %v} and {%v, %v}", file.ID, file.Size, otherFile.ID, otherFile.Size)
+	target.LatencyMetrics.APICallLatency[m.APIListFiles][m.Success].Metric("hermes_api_latency_s").AddFloat64(end.Sub(start).Seconds())
 
+	target.Journal.Filenames[fileID] = fileName
+	if logger != nil {
+		logger.Infof("Object %v added in bucket %s.", fileName, bucketName)
 	}
-	checksumAgain, err := file.CheckSum()
-	if err != nil {
-		t.Error(err)
-	}
-	if fmt.Sprintf("%x", checksum) != fmt.Sprintf("%x", checksumAgain) {
-		t.Errorf("Checksum returned different values for the same RandomFiles {%v, %v}", file.ID, file.Size)
-	}
-}
+	return nil
 
-func TestCreateFile(t *testing.T) {
-	ctx := context.Background()
-	bucketName := "test_bucket_probe0"
-	client := fakegcs.NewClient()
-	fbh := client.Bucket(bucketName)                         // fakeBucketHandle
-	if err := fbh.Create(ctx, bucketName, nil); err != nil { // creates the bucket with name "test_bucket_probe0"
-		t.Error(err)
-	}
-	fileID := int32(6)
-	fileSize := 50
-	target := &probe.Target{
-		&probepb.Target{
-			Name:                   "hermes",
-			TargetSystem:           probepb.Target_GOOGLE_CLOUD_STORAGE,
-			TotalSpaceAllocatedMib: int64(1000),
-			BucketName:             "test_bucket_probe0",
-		},
-		&journalpb.StateJournal{
-			Filenames: make(map[int32]string),
-		},
-		&metrics.Metrics{},
-	}
-	hp := &probepb.HermesProbeDef{
-		ProbeName: proto.String("createfile_test"),
-		Targets: []*probepb.Target{
-			&probepb.Target{
-				Name:                   "hermes",
-				TargetSystem:           probepb.Target_GOOGLE_CLOUD_STORAGE,
-				TotalSpaceAllocatedMib: int64(100),
-				BucketName:             "test_bucket_probe0",
-			},
-		},
-		TargetSystem: probepb.HermesProbeDef_GCS.Enum(),
-		IntervalSec:  proto.Int32(3600),
-		TimeoutSec:   proto.Int32(60),
-		ProbeLatencyDistribution: &metricpb.Dist{
-			Buckets: &metricpb.Dist_ExplicitBuckets{
-				ExplicitBuckets: "0.1,0.2,0.4,0.6,0.8,1.6,3.2,6.4,12.8,1",
-			},
-		},
-		ApiCallLatencyDistribution: &metricpb.Dist{
-			Buckets: &metricpb.Dist_ExplicitBuckets{
-				ExplicitBuckets: "0.1,0.2,0.4,0.6,0.8,1.6,3.2,6.4,12.8,1",
-			},
-		},
-	}
-	probeTarget := &probepb.Target{
-		Name:                   "hermes",
-		TargetSystem:           probepb.Target_GOOGLE_CLOUD_STORAGE,
-		TotalSpaceAllocatedMib: int64(100),
-		BucketName:             "test_bucket_probe0",
-	}
-
-	var err error
-	if target.LatencyMetrics, err = metrics.NewMetrics(hp, probeTarget); err != nil {
-		t.Error(err)
-	}
-
-	if err := CreateFile(ctx, target, fileID, fileSize, client, nil); err != nil {
-		t.Error(err)
-	}
 }
