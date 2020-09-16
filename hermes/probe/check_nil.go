@@ -141,7 +141,7 @@ func CheckNilFile(ctx context.Context, target *Target, client *stiface.Client, l
 		case sjpb.Intent_DELETE:
 			if _, ok := target.Journal.Filenames[fileID]; !ok {
 				// TODO(evanSpendlove): Call  DeleteFile() passing the fileID
-				logger.Info("File create not complete yet")
+				logger.Info("File delete not complete yet")
 			} else {
 				journal.Intent = nil // Remove intent as operation performed in full.
 			}

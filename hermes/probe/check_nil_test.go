@@ -21,6 +21,7 @@
 package probe
 
 import (
+	"github.com/googleinterns/step224-2020/hermes/probe/mock"
 	"testing"
 )
 
