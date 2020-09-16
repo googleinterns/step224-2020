@@ -1,3 +1,6 @@
+// TODO (#70) add license header and author line
+// TODO (#68) add doc strings
+
 package create
 
 import (
@@ -12,7 +15,9 @@ import (
 	"github.com/google/cloudprober/logger"
 	"github.com/googleapis/google-cloud-go-testing/storage/stiface"
 	"github.com/googleinterns/step224-2020/hermes/probe"
+
 	m "github.com/googleinterns/step224-2020/hermes/probe/metrics"
+	journalpb "github.com/googleinterns/step224-2020/hermes/proto"
 )
 
 const (
@@ -21,30 +26,30 @@ const (
 	maxFileSizeBytes = 1000 // maximum allowed file size in bytes
 )
 
-type RandomHermesFile struct {
+type RandomFile struct {
 	ID   int64 // ID is a positive integer in the range [1,50]
 	Size int   // File size in bytes
 }
 
-type randomHermesFileReader struct {
+type randomFileReader struct {
 	size int // size in bytes
 	i    int // currently reading this byte
 	rand *rand.Rand
 }
 
-func (r *randomHermesFileReader) readDone() bool {
+func (r *randomFileReader) readDone() bool {
 	return r.i >= r.size
 }
 
-func (r *randomHermesFileReader) bytesLeft() int {
+func (r *randomFileReader) bytesLeft() int {
 	return (r.size - r.i)
 }
 
-func (r *randomHermesFileReader) bufferTooLong(buffer []byte) bool {
-	return len(buffer) > r.bytesLeft()
+func (r *randomFileReader) bufferTooLong(buf []byte) bool {
+	return len(buf) > r.bytesLeft()
 }
 
-func (r *randomHermesFileReader) Read(buf []byte) (n int, err error) {
+func (r *randomFileReader) Read(buf []byte) (n int, err error) {
 	if r.readDone() {
 		return 0, io.EOF
 	}
@@ -52,53 +57,60 @@ func (r *randomHermesFileReader) Read(buf []byte) (n int, err error) {
 	if r.bufferTooLong(b) {
 		b = buf[:r.bytesLeft()]
 	}
-	n, err = r.rand.Read(b) //n is the length  of the buffer
+	n, err = r.rand.Read(b) // n is the length  of the buffer
 	if err != nil {
-		return n, err // in this case n=0 and we return 0 as nil can't be returned as a type int argument
+		return n, err // in this case n=0
 	}
 	r.i += n
 	return n, err
 }
 
 // Warning: NewReader is not thread safe
-func (f *RandomHermesFile) NewReader() *randomHermesFileReader {
-	return &randomHermesFileReader{size: f.Size, rand: rand.New(rand.NewSource(f.ID))} // ID will serve as a Seed and i - index of the currently read byte  will be set to 0 automatically in the returned reader
+func (f *RandomFile) NewReader() *randomFileReader {
+	// ID will serve as a Seed and i - index of the currently read byte  will be set to 0 automatically in the returned reader
+	return &randomFileReader{
+		size: f.Size,
+		rand: rand.New(rand.NewSource(f.ID)),
+	}
 }
 
-func (f *RandomHermesFile) CheckSum() ([]byte, error) {
+func NewRandomFile(fileID int64, fileSize int) (*RandomFile, error) {
+	if fileID < begin || fileID > end {
+		return &RandomFile{}, fmt.Errorf("the file ID provided %v wasn't in the required range [%v, %v]", fileID, begin, end)
+	}
+	if fileSize > maxFileSizeBytes || fileSize <= 0 {
+		return &RandomFile{}, fmt.Errorf("invalid argument: RandomFile.Size = %d; want 0 < size <= %d", fileSize, maxFileSizeBytes)
+	}
+	return &RandomFile{ID: int64(fileID), Size: fileSize}, nil
+}
+
+func (f *RandomFile) CheckSum() ([]byte, error) {
 	r := f.NewReader()
 	h := sha1.New()
 	if _, err := io.Copy(h, r); err != nil {
 		return nil, fmt.Errorf("io.Copy: %v", err)
 	}
-	// returns checksum in hex notation
 	return h.Sum(nil), nil
 }
 
-func (f *RandomHermesFile) FileName() (string, error) {
-	if f.ID < begin || f.ID > end {
-		return "", fmt.Errorf("The file ID provided %v wasn't in the required range [1,50]", f.ID)
-	}
-	if f.Size > maxFileSizeBytes {
-		return "", fmt.Errorf("The file size provided %v bytes exceeded the limit %v bytes", f.Size, maxFileSizeBytes)
-	}
-	if f.Size <= 0 {
-		return "", fmt.Errorf("The file size provided %v is not a positive number as required", f.Size)
-	}
+func (f *RandomFile) FileName() (string, error) {
 	checksum, err := f.CheckSum()
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("Hermes_%02d_%v", f.ID, fmt.Sprintf("%x", checksum)), nil
+	return fmt.Sprintf("Hermes_%02d_%x", f.ID, checksum), nil
 }
 
 func CreateFile(ctx context.Context, target *probe.Target, fileID int32, fileSize int, client stiface.Client, logger *logger.Logger) error {
-	f := RandomHermesFile{ID: int64(fileID), Size: fileSize}
-	bucketName := target.Target.GetBucketName()
+	f, err := NewRandomFile(int64(fileID), fileSize)
+	if err != nil {
+		return err
+	}
 	fileName, err := f.FileName()
 	if err != nil {
 		return err
 	}
+	target.Journal.Intent = &journalpb.Intent{FileOperation: journalpb.Intent_CREATE, Filename: fileName}
 	if _, ok := target.Journal.Filenames[fileID]; ok {
 		var status m.ExitStatus
 		status = m.UnknownFileFound
@@ -106,6 +118,7 @@ func CreateFile(ctx context.Context, target *probe.Target, fileID int32, fileSiz
 	}
 	r := f.NewReader()
 	start := time.Now()
+	bucketName := target.Target.GetBucketName()
 	wc := client.Bucket(bucketName).Object(fileName).NewWriter(ctx)
 	if _, err = io.Copy(wc, r); err != nil {
 		var status m.ExitStatus
@@ -121,10 +134,25 @@ func CreateFile(ctx context.Context, target *probe.Target, fileID int32, fileSiz
 	if err := wc.Close(); err != nil {
 		return fmt.Errorf("Writer.Close: %v", err)
 	}
+	target.LatencyMetrics.APICallLatency[m.APICreateFile][m.Success].Metric("hermes_api_latency_s").AddFloat64(time.Now().Sub(start).Seconds())
+	prefix := fileName[0:9]
+	query := &storage.Query{Prefix: prefix}
+	start = time.Now()
+	objIter := client.Bucket(bucketName).Objects(ctx, query)
+	end := time.Now()
+	obj, err := objIter.Next()
+	if err != nil {
+		target.LatencyMetrics.APICallLatency[m.APIListFiles][m.FileMissing].Metric("hermes_api_latency_s").AddFloat64(end.Sub(start).Seconds())
+		return fmt.Errorf("CreateFile check failed: %w", err)
+	}
+	if obj.Name != fileName {
+		fmt.Errorf("CreateFile check failed expected file name present %v got %v", fileName, obj.Name)
+	}
+	target.LatencyMetrics.APICallLatency[m.APIListFiles][m.Success].Metric("hermes_api_latency_s").AddFloat64(end.Sub(start).Seconds())
+
 	target.Journal.Filenames[fileID] = fileName
 	if logger != nil {
 		logger.Infof("Object %v added in bucket %s.", fileName, bucketName)
 	}
 	return nil
-
 }
