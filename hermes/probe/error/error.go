@@ -35,17 +35,16 @@ type ProbeError struct {
 	Err    error
 }
 
-// New returns a new ProbeError containing the error passed
-// with additional context.and the status.
+// New returns a new ProbeError containing the error and status passed.
 // Arguments:
 //	- status: pass the exit status associated with this error.
-//	- innner: pass the inner error to be wrapped.
+//	- err: pass the error to be embedded.
 // Returns:
 //	- ProbeError: returns a new ProbeError object containing the args passed.
-func New(status metrics.ExitStatus, inner error) *ProbeError {
+func New(status metrics.ExitStatus, err error) *ProbeError {
 	return &ProbeError{
 		Status: status,
-		Err:    inner,
+		Err:    err,
 	}
 }
 
