@@ -2,7 +2,7 @@
 // TODO (#68) add doc strings
 // TODO (#72) change error types and error messages
 
-package create
+package probe
 
 import (
 	"context"
