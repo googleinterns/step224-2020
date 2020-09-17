@@ -30,7 +30,7 @@ import (
 
 // ProbeError is an error that includes an exit status for used within Hermes.
 type ProbeError struct {
-	// TODO(evanSpendlove): Refactor metrics.ExitStatus to use something similar to metrics.APICallStatus.
+	// TODO(evanSpendlove): Refactor metrics.ExitStatus to be named something similar to metrics.APICallStatus.
 	Status metrics.ExitStatus
 	Err    error
 }
@@ -53,18 +53,4 @@ func New(status metrics.ExitStatus, err error) *ProbeError {
 //	- string: returns the error as a string.
 func (e *ProbeError) Error() string {
 	return fmt.Sprintf("%v: %v", e.Status, e.Err)
-}
-
-// Is returns true if the argument matches this object.
-// Each error that is wrapped is examined to find a match.
-// Arguments:
-//	- target: pass the error to be compared with.
-// Returns:
-//	- bool: true if a match, else false.
-func (e *ProbeError) Is(target error) bool {
-	t, ok := target.(*ProbeError)
-	if !ok {
-		return false
-	}
-	return (e.Status == t.Status) && (errors.Is(e.Err, t.Err))
 }
