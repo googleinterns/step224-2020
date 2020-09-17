@@ -15,16 +15,14 @@
 // Author: Evan Spendlove, GitHub: evanSpendlove.
 //
 // Delete_file_test tests the file deletion operation for MonitorProbe.
-// Package probe implements the probe that Hermes uses to monitor
-// a storage system.
 
-package probe
+package checknil
 
 import (
-	"github.com/googleinterns/step224-2020/hermes/probe/mock"
+	// "github.com/googleinterns/step224-2020/hermes/probe/mock"
 	"testing"
 )
 
 func TestCheckNilFile(t *testing.T) {
-	t.Infof("Passed")
+	t.Errorf("Passed")
 }
