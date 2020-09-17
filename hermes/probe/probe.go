@@ -28,7 +28,7 @@ import (
 	"fmt"
 	"sync"
 	"time"
-
+	"cloud.google.com/go/storage"
 	"github.com/google/cloudprober/logger"
 	cpmetrics "github.com/google/cloudprober/metrics"
 	"github.com/google/cloudprober/probes/options"
@@ -180,5 +180,68 @@ func (mp *Probe) runProbe(ctx context.Context, metricChan chan<- *cpmetrics.Even
 //	- error: returns an error if one occurred during the probe run.
 func (mp *Probe) runProbeForTarget(ctx context.Context, target *Target) (metrics.ExitStatus, error) {
 	// TODO(evanSpendlove): Add implementation of runProbeForTarget, i.e. Hermes probing algorithm.
+	
 	return metrics.Success, nil
+}
+
+func runCreate(){
+	
+ctx := context.Background()
+  client :=storage.NewClient()
+  fileID := int32(6)
+  fileSize := 50
+  target := Target{
+       &probepb.Target{
+           Name:                   "hermes",
+           TargetSystem:           probepb.Target_GOOGLE_CLOUD_STORAGE,
+           TotalSpaceAllocatedMib: int64(1000),
+           BucketName:             "test_bucket_probe0",
+       },
+       &journalpb.StateJournal{
+           Filenames: make(map[int32]string),
+       },
+       &metrics.Metrics{},
+   }
+   hp := &probepb.HermesProbeDef{
+       ProbeName: proto.String("createfile_test"),
+       Targets: []*probepb.Target{
+           &probepb.Target{
+               Name:                   "hermes",
+               TargetSystem:           probepb.Target_GOOGLE_CLOUD_STORAGE,
+               TotalSpaceAllocatedMib: int64(100),
+               BucketName:             "test_bucket_probe0",
+           },
+       },
+       TargetSystem: probepb.HermesProbeDef_GCS.Enum(),
+       IntervalSec:  proto.Int32(3600),
+       TimeoutSec:   proto.Int32(60),
+       ProbeLatencyDistribution: &metricpb.Dist{
+           Buckets: &metricpb.Dist_ExplicitBuckets{
+               ExplicitBuckets: "0.1,0.2,0.4,0.6,0.8,1.6,3.2,6.4,12.8,1",
+           },
+       },
+       ApiCallLatencyDistribution: &metricpb.Dist{
+           Buckets: &metricpb.Dist_ExplicitBuckets{
+               ExplicitBuckets: "0.1,0.2,0.4,0.6,0.8,1.6,3.2,6.4,12.8,1",
+           },
+       },
+   }
+   probeTarget := &probepb.Target{
+       Name:                   "hermes",
+       TargetSystem:           probepb.Target_GOOGLE_CLOUD_STORAGE,
+       TotalSpaceAllocatedMib: int64(100),
+       BucketName:             "test_bucket_probe0",
+   }
+ 
+   var err error
+   if target.LatencyMetrics, err = metrics.NewMetrics(hp, probeTarget); err != nil {
+       t.Fatalf("Metric set up failed due to %s", err.Error())
+   }
+ 
+   if err := CreateFile(ctx, target, fileID, fileSize, client, nil); err != nil {
+       t.Error(err)
+   }	
+	
+	
+	
 }
