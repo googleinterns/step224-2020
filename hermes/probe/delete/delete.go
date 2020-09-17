@@ -13,9 +13,9 @@
 // limitations under the License.
 //
 // Delete_file implements the probe operation for deleting a file in a
-// storage systemetrics.
+// storage system.
 
-// Package delete implements the file deletion operation with a storage systemetrics.
+// Package delete implements the file deletion operation with a storage system.
 package delete
 
 import (
@@ -32,6 +32,10 @@ import (
 	"google.golang.org/api/iterator"
 
 	pb "github.com/googleinterns/step224-2020/hermes/proto"
+)
+
+const (
+	apiLatency = "hermes_api_latency_seconds" // TODO(evanSpendlove) add this constant to metrics.go
 )
 
 // DeleteFile deletes the file, corresponding to the ID passed, in the target storage system bucket.
@@ -55,7 +59,7 @@ func DeleteFile(ctx context.Context, fileID int32, target *probe.Target, client 
 	bucket := target.Target.GetBucketName()
 
 	if fileID <= 10 || fileID >= 51 {
-		return fileID, fmt.Errorf("delete(%q, %q) failed; status invalidArgument: expected fileID %d to be within valid inclusive range: 11-50", bucket, fileID, fileID)
+		return fileID, fmt.Errorf("delete(%q, %q) failed; invalidArgument: expected fileID %d to be within valid inclusive range: 11-50", bucket, fileID, fileID)
 	}
 
 	// TODO(evanSpendlove): Add custom error object to return value and modify all returns.
@@ -83,15 +87,14 @@ func DeleteFile(ctx context.Context, fileID int32, target *probe.Target, client 
 			status = metrics.ProbeFailed
 		}
 
-		target.LatencyMetrics.APICallLatency[metrics.APIDeleteFile][status].Metric("hermes_api_latency_seconds").AddFloat64(time.Now().Sub(start).Seconds())
+		target.LatencyMetrics.APICallLatency[metrics.APIDeleteFile][status].Metric(apiLatency).AddFloat64(time.Now().Sub(start).Seconds())
 		return fileID, fmt.Errorf("delete(%q, %q) failed; status %v: %w", bucket, filename, status, err)
 	}
-	target.LatencyMetrics.APICallLatency[metrics.APIDeleteFile][metrics.Success].Metric("hermes_api_latency_seconds").AddFloat64(time.Now().Sub(start).Seconds())
+	target.LatencyMetrics.APICallLatency[metrics.APIDeleteFile][metrics.Success].Metric(apiLatency).AddFloat64(time.Now().Sub(start).Seconds())
 
 	query := &storage.Query{Prefix: filename}
 	start = time.Now()
 	objects := client.Bucket(bucket).Objects(ctx, query)
-	target.LatencyMetrics.APICallLatency[metrics.APIListFiles][metrics.Success].Metric("hermes_api_latency_seconds").AddFloat64(time.Now().Sub(start).Seconds())
 	for {
 		obj, err := objects.Next()
 		if err == iterator.Done {
@@ -99,13 +102,16 @@ func DeleteFile(ctx context.Context, fileID int32, target *probe.Target, client 
 		}
 		if obj.Name == filename {
 			status := metrics.ProbeFailed
+			target.LatencyMetrics.APICallLatency[metrics.APIListFiles][status].Metric(apiLatency).AddFloat64(time.Now().Sub(start).Seconds())
 			return fileID, fmt.Errorf("delete(%q, %q) failed; status %v: object %v still listed after delete", bucket, filename, status, obj.Name)
 		}
 		if err != nil {
 			status := metrics.BucketMissing
+			target.LatencyMetrics.APICallLatency[metrics.APIListFiles][status].Metric(apiLatency).AddFloat64(time.Now().Sub(start).Seconds())
 			return fileID, fmt.Errorf("delete(%q, %q) failed; status %v: %w", bucket, filename, status, err)
 		}
 	}
+	target.LatencyMetrics.APICallLatency[metrics.APIListFiles][metrics.Success].Metric(apiLatency).AddFloat64(time.Now().Sub(start).Seconds())
 
 	// Update in-memory NIL file after delete operation.
 	delete(target.Journal.Filenames, fileID)
@@ -119,7 +125,7 @@ func DeleteFile(ctx context.Context, fileID int32, target *probe.Target, client 
 //	- ID: returns the ID of the file to be deleted.
 func PickFileToDelete() int32 {
 	const (
-		begin                  = 11 // we can delete files staring from the file Hermes_11
+		begin                  = 11 // we can delete files starting from the file Hermes_11
 		numberOfDeletableFiles = 40 // there are 40 files to delete from [Hermes_11,Hermes_50]
 	)
 	rand.Seed(time.Now().UnixNano())

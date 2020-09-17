@@ -101,7 +101,7 @@ func genTestTarget(cfg *monitorpb.HermesProbeDef, t *testing.T) *probe.Target {
 
 	metrics, err := m.NewMetrics(cfg, genTargetPb())
 	if err != nil {
-		t.Fatalf("could not initialise metrics using config and target provided, err: %v", err)
+		t.Fatalf("could not initialise metrics using config and target provided, %v", err)
 	}
 
 	return &probe.Target{
@@ -114,13 +114,14 @@ func genTestTarget(cfg *monitorpb.HermesProbeDef, t *testing.T) *probe.Target {
 	}
 }
 
-// setupFakeSystem sets up the fake storage system through the fake client.
-func setupFakeSystem(ctx context.Context, t *testing.T) stiface.Client {
+// fakeStorageClient sets up the fake storage system through the fake client
+// and returns the fake client.
+func fakeStorageClient(ctx context.Context, t *testing.T) stiface.Client {
 	client := mock.NewFakeClient()
 
-	mockBucket := client.Bucket(bucketName)
-	if err := mockBucket.Create(ctx, "", nil); err != nil {
-		t.Fatalf("failed to create mock bucket, err: %v", err)
+	fakeBucket := client.Bucket(bucketName)
+	if err := fakeBucket.Create(ctx, "", nil); err != nil {
+		t.Fatalf("failed to create fake bucket, err: %v", err)
 	}
 
 	for i := firstID; i <= lastID; i++ {
@@ -132,7 +133,7 @@ func setupFakeSystem(ctx context.Context, t *testing.T) stiface.Client {
 			t.Fatalf("failed to create file, : %v", err)
 		}
 		if n != len([]byte(contents)) {
-			t.Fatalf("short write: wrote %d butes; wanted %d", n, len([]byte(contents)))
+			t.Fatalf("short write: wrote %d bytes; wanted %d", n, len([]byte(contents)))
 		}
 		writer.Close()
 	}
@@ -144,7 +145,7 @@ func TestDeleteRandomFile(t *testing.T) {
 	testProbeName := "testDelete1"
 	ctx := context.Background()
 
-	client := setupFakeSystem(ctx, t)
+	client := fakeStorageClient(ctx, t)
 	target := genTestTarget(genTestConfig(testProbeName), t)
 
 	logger, err := logger.NewCloudproberLog(testProbeName)
@@ -167,7 +168,7 @@ func TestDeleteRandomFile(t *testing.T) {
 			t.Errorf("deleteRandomFile failed, expected object to be deleted, got object found.")
 		}
 		if err != nil {
-			t.Fatalf("deleteRandomFile failed, expected %v, got %v", nil, err)
+			t.Fatalf("deleteRandomFile failed: %v", err)
 		}
 	}
 }
