@@ -36,15 +36,15 @@ import (
 
 const (
 	FileNamePrefixSize      = 9    // len("Hermes_ID")
-	begin                   = 1    // ID of the first HermesFile
-	end                     = 50   // ID of the last HermesFile
-	maxFileSizeBytes        = 1000 // maximum allowed file size in bytes)
+	begin                   = 1    // begin is the ID of the first HermesFile.
+	end                     = 50   // end is the ID of the last HermesFile.
+	maxFileSizeBytes        = 1000 // maxFileSizeBytes is the maximum allowed file size in bytes.
 	hermesAPILatencySeconds = "hermes_api_latency_s"
 )
 
 type randomFile struct {
-	id   int32 // id is a positive integer in the range [1,50]
-	size int   // File size in bytes
+	id   int32 // id is a positive integer in the range [begin,end]
+	size int   // size is the file size in bytes.
 }
 
 type randomFileReader struct {
@@ -69,9 +69,9 @@ func (r *randomFileReader) Read(buf []byte) (n int, err error) {
 		// if the length of buffer is greater than the number of bytes left to read make the size of the buffer match the number of bytes left to read
 		b = buf[:(r.size - r.i)]
 	}
-	n, err = r.rand.Read(b)  // n is now the length  of the buffer
+	n, err = r.rand.Read(b) // n is now the length  of the buffer
 	if err != nil {
-		return n, err  // in this case n = 0
+		return n, err // in this case n = 0
 	}
 	r.i += n
 	return n, err
@@ -79,22 +79,22 @@ func (r *randomFileReader) Read(buf []byte) (n int, err error) {
 
 // NewReader creates a new randomFileReader and returns a pointer to it
 // Returns:
-//	*randomFileReader: a Reader that supports randomFiles. This Reader contains information about the file size in bytes as well as a pseudo-random bytes generator 
+//	*randomFileReader: a Reader that supports randomFiles. This Reader contains information about the file size in bytes as well as a pseudo-random bytes generator
 // Warning: The randomFileReader produced by NewReader is not thread safe.
 func (f *randomFile) NewReader() *randomFileReader {
-	// id will serve as a Seed and i - index of the currently read byte  will be set to 0 automatically in the returned reader
+	//  id will serve as a Seed and i - index of the currently read byte  will be set to 0 automatically in the returned reader
 	return &randomFileReader{
 		size: f.size,
-		rand: rand.New(rand.NewSource(int64(f.id))),  // rand.NewSource() requires an int64 as an argument
+		rand: rand.New(rand.NewSource(int64(f.id))), // rand.NewSource() requires an int64 as an argument
 	}
 }
 
 func newRandomFile(fileID int32, fileSize int) (*randomFile, error) {
 	if fileID < begin || fileID > end {
-		return &randomFile{}, fmt.Errorf("the file ID provided %d wasn't in the required range [%d, %d]", fileID, begin, end)
+		return nil, fmt.Errorf("the file id provided %d wasn't in the required range [%d, %d]", fileID, begin, end)
 	}
 	if fileSize > maxFileSizeBytes || fileSize <= 0 {
-		return &randomFile{}, fmt.Errorf("invalid argument: randomFile.Size = %d; want 0 < size <= %d", fileSize, maxFileSizeBytes)
+		return nil, fmt.Errorf("invalid argument: randomFile.size = %d; want 0 < size <= %d", fileSize, maxFileSizeBytes)
 	}
 	return &randomFile{id: fileID, size: fileSize}, nil
 }
@@ -111,7 +111,7 @@ func (f *randomFile) checksum() ([]byte, error) {
 func (f *randomFile) fileName() (string, error) {
 	checksum, err := f.checksum()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("{%d, %d}.checksum = nil,  %v", f.id, f.size, err)
 	}
 	return fmt.Sprintf("Hermes_%02d_%x", f.id, checksum), nil
 }
