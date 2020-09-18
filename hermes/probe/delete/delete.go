@@ -35,7 +35,9 @@ import (
 )
 
 const (
-	apiLatency = "hermes_api_latency_seconds" // TODO(evanSpendlove) add this constant to metrics.go
+	apiLatency             = "hermes_api_latency_seconds" // TODO(evanSpendlove) add this constant to metrics.go
+	minFileIDToDelete      = 11                           // we can delete files starting from the file Hermes_11
+	numberOfDeletableFiles = 40                           // there are 40 files to delete from [Hermes_11,Hermes_50]
 )
 
 // DeleteFile deletes the file, corresponding to the ID passed, in the target storage system bucket.
@@ -58,8 +60,8 @@ const (
 func DeleteFile(ctx context.Context, fileID int32, target *probe.Target, client stiface.Client, logger *logger.Logger) (int32, error) {
 	bucket := target.Target.GetBucketName()
 
-	if fileID <= 10 || fileID >= 51 {
-		return fileID, fmt.Errorf("delete(%q, %q) failed; invalidArgument: expected fileID %d to be within valid inclusive range: 11-50", bucket, fileID, fileID)
+	if fileID < minFileIDToDelete || fileID >= minFileIDToDelete+numberOfDeletableFiles {
+		return fileID, fmt.Errorf("deleteFile(%q, %q) failed; status %v: expected fileID %d to be within valid inclusive range: 11-50", bucket, fileID, metrics.InvalidArgument, fileID)
 	}
 
 	// TODO(evanSpendlove): Add custom error object to return value and modify all returns.
@@ -75,6 +77,7 @@ func DeleteFile(ctx context.Context, fileID int32, target *probe.Target, client 
 
 	file := client.Bucket(bucket).Object(filename)
 
+	// TODO(#77): Refactor timing into using function from metrics.go
 	start := time.Now()
 	if err := file.Delete(ctx); err != nil {
 		var status metrics.ExitStatus
@@ -88,11 +91,12 @@ func DeleteFile(ctx context.Context, fileID int32, target *probe.Target, client 
 		}
 
 		target.LatencyMetrics.APICallLatency[metrics.APIDeleteFile][status].Metric(apiLatency).AddFloat64(time.Now().Sub(start).Seconds())
-		return fileID, fmt.Errorf("delete(%q, %q) failed; status %v: %w", bucket, filename, status, err)
+		return fileID, fmt.Errorf("deleteFile(%q, %q) failed; status %v: %w", bucket, filename, status, err)
 	}
 	target.LatencyMetrics.APICallLatency[metrics.APIDeleteFile][metrics.Success].Metric(apiLatency).AddFloat64(time.Now().Sub(start).Seconds())
 
 	query := &storage.Query{Prefix: filename}
+	// TODO(#77): Refactor timing into using function from metrics.go
 	start = time.Now()
 	objects := client.Bucket(bucket).Objects(ctx, query)
 	for {
@@ -103,12 +107,12 @@ func DeleteFile(ctx context.Context, fileID int32, target *probe.Target, client 
 		if obj.Name == filename {
 			status := metrics.ProbeFailed
 			target.LatencyMetrics.APICallLatency[metrics.APIListFiles][status].Metric(apiLatency).AddFloat64(time.Now().Sub(start).Seconds())
-			return fileID, fmt.Errorf("delete(%q, %q) failed; status %v: object %v still listed after delete", bucket, filename, status, obj.Name)
+			return fileID, fmt.Errorf("deleteFile(%q, %q) failed; status %v: object %v still listed after delete", bucket, filename, status, obj.Name)
 		}
 		if err != nil {
 			status := metrics.BucketMissing
 			target.LatencyMetrics.APICallLatency[metrics.APIListFiles][status].Metric(apiLatency).AddFloat64(time.Now().Sub(start).Seconds())
-			return fileID, fmt.Errorf("delete(%q, %q) failed; status %v: %w", bucket, filename, status, err)
+			return fileID, fmt.Errorf("deleteFile(%q, %q) failed; status %v: %w", bucket, filename, status, err)
 		}
 	}
 	target.LatencyMetrics.APICallLatency[metrics.APIListFiles][metrics.Success].Metric(apiLatency).AddFloat64(time.Now().Sub(start).Seconds())
@@ -124,10 +128,6 @@ func DeleteFile(ctx context.Context, fileID int32, target *probe.Target, client 
 // Returns:
 //	- ID: returns the ID of the file to be deleted.
 func PickFileToDelete() int32 {
-	const (
-		begin                  = 11 // we can delete files starting from the file Hermes_11
-		numberOfDeletableFiles = 40 // there are 40 files to delete from [Hermes_11,Hermes_50]
-	)
 	rand.Seed(time.Now().UnixNano())
-	return int32(rand.Intn(numberOfDeletableFiles) + begin)
+	return int32(rand.Intn(numberOfDeletableFiles) + minFileIDToDelete)
 }

@@ -28,7 +28,7 @@ import (
 	"github.com/google/cloudprober/logger"
 	"github.com/googleapis/google-cloud-go-testing/storage/stiface"
 	"github.com/googleinterns/step224-2020/hermes/probe"
-	"github.com/googleinterns/step224-2020/hermes/probe/mock"
+	"github.com/googleinterns/step224-2020/hermes/probe/fakegcs"
 	"google.golang.org/api/iterator"
 
 	metricpb "github.com/google/cloudprober/metrics/proto"
@@ -78,6 +78,7 @@ func genTargetPb() *monitorpb.Target {
 }
 
 const (
+	// TODO(#76): Change these to int from int32.
 	firstID    = int32(1)
 	lastID     = int32(50)
 	contents   = "abc123"
@@ -101,7 +102,7 @@ func genTestTarget(cfg *monitorpb.HermesProbeDef, t *testing.T) *probe.Target {
 
 	metrics, err := m.NewMetrics(cfg, genTargetPb())
 	if err != nil {
-		t.Fatalf("could not initialise metrics using config and target provided, %v", err)
+		t.Fatalf("could not initialise metrics using config and target provided: %v", err)
 	}
 
 	return &probe.Target{
@@ -114,13 +115,10 @@ func genTestTarget(cfg *monitorpb.HermesProbeDef, t *testing.T) *probe.Target {
 	}
 }
 
-// fakeStorageClient sets up the fake storage system through the fake client
-// and returns the fake client.
-func fakeStorageClient(ctx context.Context, t *testing.T) stiface.Client {
-	client := mock.NewFakeClient()
-
-	fakeBucket := client.Bucket(bucketName)
-	if err := fakeBucket.Create(ctx, "", nil); err != nil {
+// createTestFiles creates a test bucket and the required test files.
+func createTestFiles(ctx context.Context, client stiface.Client, t *testing.T) {
+	bucket := client.Bucket(bucketName)
+	if err := bucket.Create(ctx, "", nil); err != nil {
 		t.Fatalf("failed to create fake bucket, err: %v", err)
 	}
 
@@ -130,22 +128,22 @@ func fakeStorageClient(ctx context.Context, t *testing.T) stiface.Client {
 		writer := client.Bucket(bucketName).Object(filename).NewWriter(ctx)
 		n, err := writer.Write([]byte(contents))
 		if err != nil {
-			t.Fatalf("failed to create file, : %v", err)
+			t.Fatalf("failed to create file: %v", err)
 		}
 		if n != len([]byte(contents)) {
 			t.Fatalf("short write: wrote %d bytes; wanted %d", n, len([]byte(contents)))
 		}
 		writer.Close()
 	}
-
-	return client
 }
 
 func TestDeleteRandomFile(t *testing.T) {
 	testProbeName := "testDelete1"
 	ctx := context.Background()
 
-	client := fakeStorageClient(ctx, t)
+	client := fakegcs.NewClient()
+	createTestFiles(ctx, client, t)
+
 	target := genTestTarget(genTestConfig(testProbeName), t)
 
 	logger, err := logger.NewCloudproberLog(testProbeName)
@@ -165,7 +163,7 @@ func TestDeleteRandomFile(t *testing.T) {
 			break
 		}
 		if obj.Name == filename {
-			t.Errorf("deleteRandomFile failed, expected object to be deleted, got object found.")
+			t.Errorf("deleteRandomFile failed: expected object to be deleted, got object found.")
 		}
 		if err != nil {
 			t.Fatalf("deleteRandomFile failed: %v", err)
