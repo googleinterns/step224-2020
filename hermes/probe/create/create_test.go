@@ -35,26 +35,32 @@ func TestNewRandomFile(t *testing.T) {
 	tests := []struct {
 		fileID   int32
 		fileSize int
-		want   *randomFile
+		want     *randomFile
 		wantErr  bool
 	}{
-		{51, 12, &randomFile{}, true},
-		{0, 50, &randomFile{}, true},
+		{51, 12, nil, true},
+		{0, 50, nil, true},
 		{3, 100, &randomFile{3, 100}, false},
 		{12, 100, &randomFile{12, 100}, false},
-		{3, 0, &randomFile{}, false},
-		{3, 1001, &randomFile{}, false},
+		{3, 0, nil, true},
+		{3, 1001, nil, true},
 	}
-	for _, test := range tests {
-		got, err := newRandomFile(test.fileID, test.fileSize)
-		if err != nil && !test.wantErr {
-			t.Errorf("{%d, %d}.newRandomFile() failed and returned an unexpected error %v", test.fileID, test.fileSize, err)
+	for _, tc := range tests {
+		got, err := newRandomFile(tc.fileID, tc.fileSize)
+		if tc.want == nil && got != nil {
+			t.Errorf("{%d, %d}.newRandomFile = {%d, %d} expected nil", tc.fileID, tc.fileSize, got.id, got.size)
 		}
-		if err == nil && test.wantErr {
-			t.Errorf("{%d, %d}.newRandomFile() failed expected an error got nil", test.fileID, test.fileSize)
+		if got == nil && tc.want != nil {
+			t.Errorf("{%d, %d}.newRandomFile = nil expected {%d, %d}", tc.fileID, tc.fileSize, tc.want.id, tc.want.size)
 		}
-		if got.id != test.wantRF.id || got.size != test.wantRF.size {
-			t.Errorf("{%d, %d}.newRandomFile() failed expected {%d,%d}, got {%d,%d}", test.fileID, test.fileSize, test.wantRF.id, test.wantRF.size, got.id, got.size)
+		if err != nil && !tc.wantErr {
+			t.Errorf("{%d, %d}.newRandomFile() failed and returned an unexpected error %v", tc.fileID, tc.fileSize, err)
+		}
+		if err == nil && tc.wantErr {
+			t.Errorf("{%d, %d}.newRandomFile() failed expected an error got nil", tc.fileID, tc.fileSize)
+		}
+		if got != nil && (got.id != tc.want.id || got.size != tc.want.size) {
+			t.Errorf("{%d, %d}.newRandomFile() =  {%d,%d}, expected {%d,%d}", tc.fileID, tc.fileSize, got.id, got.size, tc.want.id, tc.want.size)
 		}
 
 	}
@@ -63,21 +69,21 @@ func TestNewRandomFile(t *testing.T) {
 
 func TestFileName(t *testing.T) {
 	tests := []struct {
-		file     *randomFile
-		wantName string
+		file *randomFile
+		want string
 	}{
 		{&randomFile{3, 100}, "Hermes_03"},
 		{&randomFile{12, 100}, "Hermes_12"},
 		{&randomFile{8, 20}, "Hermes_08"},
 	}
 
-	for _, test := range tests {
-		got, err := test.file.fileName()
+	for _, tc := range tests {
+		got, err := tc.file.fileName()
 		if err != nil {
-			t.Errorf("{%d, %d}.fileName() failed and returned an unexpected error %v", test.file.id, test.file.size, err)
+			t.Errorf("{%d, %d}.fileName() failed and returned an unexpected error %v", tc.file.id, tc.file.size, err)
 		}
-		if got[:FileNamePrefixSize] != test.wantName {
-			t.Errorf("{%d, %d}.fileName() failed expected prefix %q got prefix %q", test.file.id, test.file.size, test.wantName, got[:FileNamePrefixSize])
+		if got[:FileNamePrefixSize] != tc.want {
+			t.Errorf("{%d, %d}.fileName() =  %q_checksum expected %q_checksum", tc.file.id, tc.file.size, got[:FileNamePrefixSize], tc.want)
 		}
 	}
 }
@@ -88,13 +94,13 @@ func TestChecksum(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	file = randomFile{13, 100}
-	otherChecksum, err := file.checksum()
+	otherFile := randomFile{13, 100}
+	otherChecksum, err := otherFile.checksum()
 	if err != nil {
 		t.Error(err)
 	}
 	if fmt.Sprintf("%x", checksum) == fmt.Sprintf("%x", otherChecksum) {
-		t.Errorf("Checksum returned the same value for two different randomFiles {%d, %d} and {%d, %d}", file.id, file.size, file.id, file.size)
+		t.Errorf("{%d, %d}.checksum = {%d,%d}.checksum expected {%d, %d}.checksum != {%d, %d}.checksum ", file.id, file.size, otherFile.id, otherFile.size, file.id, file.size, otherFile.id, otherFile.size)
 
 	}
 	file = randomFile{11, 100}
@@ -103,14 +109,16 @@ func TestChecksum(t *testing.T) {
 		t.Error(err)
 	}
 	if fmt.Sprintf("%x", checksum) != fmt.Sprintf("%x", checksumAgain) {
-		t.Errorf("Checksum returned different values for the same randomFiles {%d, %d}", file.id, file.size)
+		t.Errorf("{%d, %d}.checksum != {%d, %d}.checksum expected {%d, %d}.checksum = {%d, %d}.checksum", file.id, file.size, file.id, file.size, file.id, file.size, file.id, file.size)
 	}
 }
 
 func TestCreateFile(t *testing.T) {
 	ctx := context.Background()
-	bucketName := "test_bucket_probe0"
 	client := fakegcs.NewClient()
+	bucketName := "test_bucket_probe0"
+	fakeBucketHandle := client.Bucket(bucketName)
+	if err := fakeBucketHandle.Create(ctx, bucketName, nil); err != nil {
 		t.Error(err)
 	}
 	fileID := int32(6)
