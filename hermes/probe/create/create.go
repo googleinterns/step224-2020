@@ -192,7 +192,7 @@ func CreateFile(ctx context.Context, target *probe.Target, fileID int32, fileSiz
 		return fmt.Errorf("expected exactly one file in bucket %q with prefix %q; found %d: %v", bucketName, fileNamePrefix, len(namesFound), namesFound)
 	}
 	if namesFound[0] != fileName {
-		return fmt.Errorf("CreateFile check failed expected file name present %q got %q", fileName, namesFound[0])
+		fmt.Errorf("CreateFile check failed: filename matching %q prefix: %q; want %q", fileNamePrefix, namesFound[0], filaName)
 	}
 	target.LatencyMetrics.APICallLatency[metrics.APIListFiles][metrics.Success].Metric(hermesAPILatencySeconds).AddFloat64(finish.Sub(start).Seconds())
 
