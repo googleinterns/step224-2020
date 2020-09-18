@@ -24,6 +24,7 @@ const (
 	begin            = 1    // ID of the first HermesFile
 	end              = 50   // ID of the last HermesFile
 	maxFileSizeBytes = 1000 // maximum allowed file size in bytes
+	APILatency       = "hermes_api_latency_seconds"
 )
 
 type RandomFile struct {
@@ -128,14 +129,14 @@ func CreateFile(ctx context.Context, target *Target, fileID int32, fileSize int,
 		default:
 			status = m.ProbeFailed
 		}
-		target.LatencyMetrics.APICallLatency[m.APICreateFile][status].Metric("hermes_api_latency_s").AddFloat64(time.Now().Sub(start).Seconds())
+		target.LatencyMetrics.APICallLatency[m.APICreateFile][status].Metric(APILatency).AddFloat64(time.Now().Sub(start).Seconds())
 		return fmt.Errorf("CreateFile(id: %d).%v: could not create file %s: %w", fileID, status, fileName, err)
 	}
 	if err := wc.Close(); err != nil {
-		target.LatencyMetrics.APICallLatency[m.APICreateFile][m.APICallFailed].Metric("hermes_api_latency_s").AddFloat64(time.Now().Sub(start).Seconds())
+		target.LatencyMetrics.APICallLatency[m.APICreateFile][m.APICallFailed].Metric(APILatency).AddFloat64(time.Now().Sub(start).Seconds())
 		return fmt.Errorf("Writer.Close: %v", err)
 	}
-	target.LatencyMetrics.APICallLatency[m.APICreateFile][m.Success].Metric("hermes_api_latency_s").AddFloat64(time.Now().Sub(start).Seconds())
+	target.LatencyMetrics.APICallLatency[m.APICreateFile][m.Success].Metric(APILatency).AddFloat64(time.Now().Sub(start).Seconds())
 	prefix := fileName[0:9]
 	query := &storage.Query{Prefix: prefix}
 	start = time.Now()
@@ -143,13 +144,13 @@ func CreateFile(ctx context.Context, target *Target, fileID int32, fileSize int,
 	end := time.Now()
 	obj, err := objIter.Next()
 	if err != nil {
-		target.LatencyMetrics.APICallLatency[m.APIListFiles][m.FileMissing].Metric("hermes_api_latency_s").AddFloat64(end.Sub(start).Seconds())
+		target.LatencyMetrics.APICallLatency[m.APIListFiles][m.FileMissing].Metric(APILatency).AddFloat64(end.Sub(start).Seconds())
 		return fmt.Errorf("CreateFile check failed: %w", err)
 	}
 	if obj.Name != fileName {
 		fmt.Errorf("CreateFile check failed expected file name present %v got %v", fileName, obj.Name)
 	}
-	target.LatencyMetrics.APICallLatency[m.APIListFiles][m.Success].Metric("hermes_api_latency_s").AddFloat64(end.Sub(start).Seconds())
+	target.LatencyMetrics.APICallLatency[m.APIListFiles][m.Success].Metric(APILatency).AddFloat64(end.Sub(start).Seconds())
 
 	target.Journal.Filenames[fileID] = fileName
 	if logger != nil {

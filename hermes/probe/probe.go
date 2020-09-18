@@ -24,15 +24,16 @@
 package probe
 
 import (
-	"cloud.google.com/go/storage"
 	"context"
 	"fmt"
+	"sync"
+	"time"
+
+	"cloud.google.com/go/storage"
 	"github.com/google/cloudprober/logger"
 	"github.com/google/cloudprober/probes/options"
 	"github.com/googleapis/google-cloud-go-testing/storage/stiface"
 	"github.com/googleinterns/step224-2020/hermes/probe/metrics"
-	"sync"
-	"time"
 
 	cpmetrics "github.com/google/cloudprober/metrics"
 	probepb "github.com/googleinterns/step224-2020/config/proto"
@@ -163,19 +164,20 @@ func (mp *Probe) runProbe(ctx context.Context, metricChan chan<- *cpmetrics.Even
 			fmt.Println("Pre-Metrics creation")
 			if t.LatencyMetrics, err = metrics.NewMetrics(mp.config, t.Target); err != nil {
 				mp.logger.Errorf(err.Error())
-				fmt.Println("Err: %v", err.Error())
+				fmt.Printf("Err: %v", err.Error())
 				return
 			}
 			fmt.Println("METRICS CREATED")
 			probeCtx, _ := context.WithDeadline(ctx, time.Now().Add(mp.interval()))
 			start := time.Now()
 			exitStatus, err := mp.runProbeForTarget(probeCtx, t)
+			fmt.Printf("Exit status: %v, err: %v\n\n", exitStatus, err)
 			if err != nil {
 				mp.logger.Errorf(err.Error())
-				t.LatencyMetrics.ProbeOpLatency[metrics.TotalProbeRun][exitStatus].Metric("hermes_probe_latency_s").AddFloat64(time.Now().Sub(start).Seconds())
+				t.LatencyMetrics.ProbeOpLatency[metrics.TotalProbeRun][exitStatus].Metric("hermes_probe_latency_seconds").AddFloat64(time.Now().Sub(start).Seconds())
 				return
 			}
-			t.LatencyMetrics.ProbeOpLatency[metrics.TotalProbeRun][metrics.Success].Metric("hermes_probe_latency_s").AddFloat64(time.Now().Sub(start).Seconds())
+			t.LatencyMetrics.ProbeOpLatency[metrics.TotalProbeRun][metrics.Success].Metric("hermes_probe_latency_seconds").AddFloat64(time.Now().Sub(start).Seconds())
 			reportMetrics(t.LatencyMetrics, metricChan)
 		}(t)
 	}
@@ -210,12 +212,17 @@ func (mp *Probe) runProbeForTarget(ctx context.Context, target *Target) (metrics
 		}
 	}
 
-	// DELETE HERE
-	/*
-		if err := CreateFile(ctx, target, int32(id), fileSize, client, mp.logger); err != nil {
-			return metrics.ProbeFailed, err
-		}
-	*/
+	id, err := DeleteFile(ctx, PickFileToDelete(), target, client, mp.logger)
+	fmt.Printf("\n\nDeleteFile: ID: %d, err: %v\n", id, err)
+	if err != nil {
+		return metrics.ProbeFailed, err
+	}
+
+	if err := CreateFile(ctx, target, int32(id), fileSize, client, mp.logger); err != nil {
+		fmt.Printf("CreateFile: ID: %d, err: %v\n\n", id, err)
+		return metrics.ProbeFailed, err
+	}
+	fmt.Printf("CreateFile: ID: %d, err: %v\n\n", id, err)
 
 	return metrics.Success, nil
 }
