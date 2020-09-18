@@ -25,7 +25,6 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
-	"strings"
 	"time"
 
 	"cloud.google.com/go/storage"
@@ -69,9 +68,9 @@ func (r *randomFileReader) Read(buf []byte) (n int, err error) {
 		return 0, io.EOF
 	}
 	b := buf
-	if len(buf) > (r.sizeBytes - r.i) {
+	if len(buf) > r.sizeBytes-r.i {
 		// if the length of buffer is greater than the number of bytes left to read make the sizeBytes of the buffer match the number of bytes left to read
-		b = buf[:(r.sizeBytes - r.i)]
+		b = buf[:r.sizeBytes-r.i]
 	}
 	// n is now the length  of the buffer
 	n, err = r.rand.Read(b)
@@ -91,14 +90,14 @@ func (f *randomFile) newReader() *randomFileReader {
 	}
 }
 
-func newRandomFile(fileID int32, fileSize int) (*randomFile, error) {
-	if fileID < minFileID || fileID > maxFileID {
-		return nil, fmt.Errorf("invalid argument: fileID = %d; want %d <= fileID <= %d", fileID, minFileID, maxFileID)
+func newRandomFile(id int32, sizeBytes int) (*randomFile, error) {
+	if id < minFileID || id > maxFileID {
+		return nil, fmt.Errorf("invalid argument: id = %d; want %d <= id <= %d", id, minFileID, maxFileID)
 	}
-	if fileSize > maxFileSizeBytes || fileSize <= 0 {
-		return nil, fmt.Errorf("invalid argument: randomFile.sizeBytes = %d; want 0 < sizeBytes <= %d", fileSize, maxFileSizeBytes)
+	if sizeBytes > maxFileSizeBytes || sizeBytes <= 0 {
+		return nil, fmt.Errorf("invalid argument: sizeBytes = %d; want 0 < sizeBytes <= %d", sizeBytes, maxFileSizeBytes)
 	}
-	return &randomFile{id: fileID, sizeBytes: fileSize}, nil
+	return &randomFile{id: id, sizeBytes: sizeBytes}, nil
 }
 
 func (f *randomFile) checksum() ([]byte, error) {
@@ -168,7 +167,8 @@ func CreateFile(ctx context.Context, target *probe.Target, fileID int32, fileSiz
 	target.LatencyMetrics.APICallLatency[metrics.APICreateFile][status].Metric(hermesAPILatencySeconds).AddFloat64(time.Now().Sub(start).Seconds())
 
 	// Verify that the file that has just been created is in fact present in the target system
-	query := &storage.Query{Prefix: fmt.Sprintf(FileNameFormat, fileID, "")}
+	fileNamePrefix := fmt.Sprintf(FileNameFormat, fileID, "")
+	query := &storage.Query{Prefix: fileNamePrefix}
 	start = time.Now()
 	objIter := client.Bucket(bucketName).Objects(ctx, query)
 	finish := time.Now()
@@ -177,7 +177,7 @@ func CreateFile(ctx context.Context, target *probe.Target, fileID int32, fileSiz
 		target.LatencyMetrics.APICallLatency[metrics.APIListFiles][metrics.FileMissing].Metric(hermesAPILatencySeconds).AddFloat64(finish.Sub(start).Seconds())
 		return fmt.Errorf("CreateFile check failed: %w", err)
 	}
-	namesFound := []string{obj.Name}
+	var namesFound []string
 	for {
 		if obj == nil {
 			break
@@ -186,7 +186,7 @@ func CreateFile(ctx context.Context, target *probe.Target, fileID int32, fileSiz
 		obj, err = objIter.Next()
 	}
 	if len(namesFound) > 1 {
-		fmt.Errorf("Found more than one file on the target system with the fileID: %d found: %s", fileID, strings.Join(namesFound, "\n"))
+		fmt.Errorf("expected exactly one file in bucket %q with prefix %q; found %d: %v", bucketName, fileNamePrefix, len(namesFound), namesFound)
 	}
 	if namesFound[0] != fileName {
 		fmt.Errorf("CreateFile check failed expected file name present %q got %q", fileName, obj.Name)
