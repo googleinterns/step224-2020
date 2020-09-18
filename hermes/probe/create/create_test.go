@@ -31,6 +31,8 @@ import (
 	journalpb "github.com/googleinterns/step224-2020/hermes/proto"
 )
 
+var fileNamePrefixLength = len(fmt.Sprintf(FileNameFormat, 0, ""))
+
 func TestNewRandomFile(t *testing.T) {
 	tests := []struct {
 		fileID   int32
@@ -48,19 +50,19 @@ func TestNewRandomFile(t *testing.T) {
 	for _, tc := range tests {
 		got, err := newRandomFile(tc.fileID, tc.fileSize)
 		if tc.want == nil && got != nil {
-			t.Errorf("{%d, %d}.newRandomFile = {%d, %d} expected nil", tc.fileID, tc.fileSize, got.id, got.size)
+			t.Errorf("{%d, %d}.newRandomFile = {%d, %d} expected nil", tc.fileID, tc.fileSize, got.id, got.sizeBytes)
 		}
 		if got == nil && tc.want != nil {
-			t.Errorf("{%d, %d}.newRandomFile = nil expected {%d, %d}", tc.fileID, tc.fileSize, tc.want.id, tc.want.size)
+			t.Errorf("{%d, %d}.newRandomFile = nil expected {%d, %d}", tc.fileID, tc.fileSize, tc.want.id, tc.want.sizeBytes)
 		}
 		if err != nil && !tc.wantErr {
-			t.Errorf("{%d, %d}.newRandomFile() failed and returned an unexpected error %v", tc.fileID, tc.fileSize, err)
+			t.Errorf("{%d, %d}.newRandomFile() failed and returned an unexpected error %w", tc.fileID, tc.fileSize, err)
 		}
 		if err == nil && tc.wantErr {
 			t.Errorf("{%d, %d}.newRandomFile() failed expected an error got nil", tc.fileID, tc.fileSize)
 		}
-		if got != nil && (got.id != tc.want.id || got.size != tc.want.size) {
-			t.Errorf("{%d, %d}.newRandomFile() =  {%d,%d}, expected {%d,%d}", tc.fileID, tc.fileSize, got.id, got.size, tc.want.id, tc.want.size)
+		if got != nil && (got.id != tc.want.id || got.sizeBytes != tc.want.sizeBytes) {
+			t.Errorf("{%d, %d}.newRandomFile() =  {%d,%d}, expected {%d,%d}", tc.fileID, tc.fileSize, got.id, got.sizeBytes, tc.want.id, tc.want.sizeBytes)
 		}
 
 	}
@@ -72,18 +74,18 @@ func TestFileName(t *testing.T) {
 		file *randomFile
 		want string
 	}{
-		{&randomFile{3, 100}, "Hermes_03"},
-		{&randomFile{12, 100}, "Hermes_12"},
-		{&randomFile{8, 20}, "Hermes_08"},
+		{&randomFile{3, 100}, "Hermes_03_"},
+		{&randomFile{12, 100}, "Hermes_12_"},
+		{&randomFile{8, 20}, "Hermes_08_"},
 	}
 
 	for _, tc := range tests {
 		got, err := tc.file.fileName()
 		if err != nil {
-			t.Errorf("{%d, %d}.fileName() failed and returned an unexpected error %v", tc.file.id, tc.file.size, err)
+			t.Errorf("{%d, %d}.fileName() failed and returned an unexpected error %w", tc.file.id, tc.file.sizeBytes, err)
 		}
-		if got[:FileNamePrefixSize] != tc.want {
-			t.Errorf("{%d, %d}.fileName() =  %q_checksum expected %q_checksum", tc.file.id, tc.file.size, got[:FileNamePrefixSize], tc.want)
+		if got[:fileNamePrefixLength] != tc.want {
+			t.Errorf("{%d, %d}.fileName() =  %qchecksum expected %qchecksum", tc.file.id, tc.file.sizeBytes, got[:fileNamePrefixLength], tc.want)
 		}
 	}
 }
@@ -100,7 +102,7 @@ func TestChecksum(t *testing.T) {
 		t.Error(err)
 	}
 	if fmt.Sprintf("%x", checksum) == fmt.Sprintf("%x", otherChecksum) {
-		t.Errorf("{%d, %d}.checksum = {%d,%d}.checksum expected {%d, %d}.checksum != {%d, %d}.checksum ", file.id, file.size, otherFile.id, otherFile.size, file.id, file.size, otherFile.id, otherFile.size)
+		t.Errorf("{%d, %d}.checksum = {%d,%d}.checksum expected {%d, %d}.checksum != {%d, %d}.checksum ", file.id, file.sizeBytes, otherFile.id, otherFile.sizeBytes, file.id, file.sizeBytes, otherFile.id, otherFile.sizeBytes)
 
 	}
 	file = randomFile{11, 100}
@@ -109,7 +111,7 @@ func TestChecksum(t *testing.T) {
 		t.Error(err)
 	}
 	if fmt.Sprintf("%x", checksum) != fmt.Sprintf("%x", checksumAgain) {
-		t.Errorf("{%d, %d}.checksum != {%d, %d}.checksum expected {%d, %d}.checksum = {%d, %d}.checksum", file.id, file.size, file.id, file.size, file.id, file.size, file.id, file.size)
+		t.Errorf("{%d, %d}.checksum != {%d, %d}.checksum expected {%d, %d}.checksum = {%d, %d}.checksum", file.id, file.sizeBytes, file.id, file.sizeBytes, file.id, file.sizeBytes, file.id, file.sizeBytes)
 	}
 }
 
