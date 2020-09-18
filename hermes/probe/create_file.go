@@ -15,7 +15,6 @@ import (
 	"cloud.google.com/go/storage"
 	"github.com/google/cloudprober/logger"
 	"github.com/googleapis/google-cloud-go-testing/storage/stiface"
-	"github.com/googleinterns/step224-2020/hermes/probe"
 
 	m "github.com/googleinterns/step224-2020/hermes/probe/metrics"
 	journalpb "github.com/googleinterns/step224-2020/hermes/proto"
@@ -102,7 +101,7 @@ func (f *RandomFile) FileName() (string, error) {
 	return fmt.Sprintf("Hermes_%02d_%x", f.ID, checksum), nil
 }
 
-func CreateFile(ctx context.Context, target *probe.Target, fileID int32, fileSize int, client stiface.Client, logger *logger.Logger) error {
+func CreateFile(ctx context.Context, target *Target, fileID int32, fileSize int, client stiface.Client, logger *logger.Logger) error {
 	f, err := NewRandomFile(int64(fileID), fileSize)
 	if err != nil {
 		return err
@@ -133,7 +132,7 @@ func CreateFile(ctx context.Context, target *probe.Target, fileID int32, fileSiz
 		return fmt.Errorf("CreateFile(id: %d).%v: could not create file %s: %w", fileID, status, fileName, err)
 	}
 	if err := wc.Close(); err != nil {
-		target.LatencyMetrics.APICallLatency[m.APICreateFile][m.WriterCloseFailed].Metric("hermes_api_latency_s").AddFloat64(time.Now().Sub(start).Seconds())
+		target.LatencyMetrics.APICallLatency[m.APICreateFile][m.APICallFailed].Metric("hermes_api_latency_s").AddFloat64(time.Now().Sub(start).Seconds())
 		return fmt.Errorf("Writer.Close: %v", err)
 	}
 	target.LatencyMetrics.APICallLatency[m.APICreateFile][m.Success].Metric("hermes_api_latency_s").AddFloat64(time.Now().Sub(start).Seconds())

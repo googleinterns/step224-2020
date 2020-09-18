@@ -157,7 +157,7 @@ func NewMetrics(conf *probepb.HermesProbeDef, target *probepb.Target) (*Metrics,
 		m.ProbeOpLatency[op] = make(map[ExitStatus]*metrics.EventMetrics, len(ExitStatusName))
 		for e := range ExitStatusName {
 			m.ProbeOpLatency[op][e] = metrics.NewEventMetrics(time.Now()).
-				AddMetric("hermes_probe_latency_seconds", probeOpLatDist.Clone()).
+				AddMetric("hermes_probe_latency_s", probeOpLatDist.Clone()).
 				AddLabel("storage_system", target.GetTargetSystem().String()).
 				AddLabel("target", fmt.Sprintf("%s:%s", target.GetName(), target.GetBucketName())).
 				AddLabel("probe_operation_type", ProbeOpName[op]).
@@ -174,7 +174,7 @@ func NewMetrics(conf *probepb.HermesProbeDef, target *probepb.Target) (*Metrics,
 		m.APICallLatency[call] = make(map[ExitStatus]*metrics.EventMetrics, len(ExitStatusName))
 		for e := range ExitStatusName {
 			m.APICallLatency[call][e] = metrics.NewEventMetrics(time.Now()).
-				AddMetric("hermes_api_latency_seconds", apiCallLatDist.Clone()).
+				AddMetric("hermes_api_latency_s", apiCallLatDist.Clone()).
 				AddLabel("storage_system", target.GetTargetSystem().String()).
 				AddLabel("target", fmt.Sprintf("%s:%s", target.GetName(), target.GetBucketName())).
 				AddLabel("probe_operation_type", APICallName[call]).

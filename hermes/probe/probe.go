@@ -24,16 +24,17 @@
 package probe
 
 import (
+	"cloud.google.com/go/storage"
 	"context"
 	"fmt"
+	"github.com/google/cloudprober/logger"
+	"github.com/google/cloudprober/probes/options"
+	"github.com/googleapis/google-cloud-go-testing/storage/stiface"
+	"github.com/googleinterns/step224-2020/hermes/probe/metrics"
 	"sync"
 	"time"
-	"cloud.google.com/go/storage"
-	"github.com/google/cloudprober/logger"
-	cpmetrics "github.com/google/cloudprober/metrics"
-	"github.com/google/cloudprober/probes/options"
-	"github.com/googleinterns/step224-2020/hermes/probe/metrics"
 
+	cpmetrics "github.com/google/cloudprober/metrics"
 	probepb "github.com/googleinterns/step224-2020/config/proto"
 	journalpb "github.com/googleinterns/step224-2020/hermes/proto"
 )
@@ -99,6 +100,8 @@ func (mp *Probe) Init(name string, opts *options.Options) error {
 	mp.opts = opts
 	mp.logger = opts.Logger
 
+	fmt.Println("INIT COMPLETE")
+
 	return nil
 }
 
@@ -108,8 +111,10 @@ func (mp *Probe) Init(name string, opts *options.Options) error {
 // Arguments:
 //	- ctx: context provided for cancelling probe.
 //	- metricChan: unidirectional channel used for sending metrics to be surfaced.
-func (mp *Probe) Start(ctx context.Context, metricChan chan<- *cpmetrics.EventMetrics) {
+func (mp *Probe) Start(ctx context.Context, metricChan chan *cpmetrics.EventMetrics) {
+	fmt.Println("Interval: ", mp.interval())
 	probeTicker := time.NewTicker(mp.interval())
+	fmt.Println("START")
 
 	for {
 		select {
@@ -117,6 +122,7 @@ func (mp *Probe) Start(ctx context.Context, metricChan chan<- *cpmetrics.EventMe
 			probeTicker.Stop()
 			return
 		case <-probeTicker.C:
+			fmt.Println("RUN PROBE")
 			mp.runProbe(ctx, metricChan)
 		}
 	}
@@ -147,24 +153,29 @@ func reportMetrics(run *metrics.Metrics, metricChan chan<- *cpmetrics.EventMetri
 //	- metricChan: pass the metrics channel for surfacing metrics to Cloudprober.
 func (mp *Probe) runProbe(ctx context.Context, metricChan chan<- *cpmetrics.EventMetrics) {
 	var wg sync.WaitGroup
+	fmt.Println("RUN PROBE INNER")
+	fmt.Println("Targets length: ", len(mp.targets))
 	for _, t := range mp.targets {
 		wg.Add(1)
 		go func(t *Target) {
 			defer wg.Done()
 			var err error
+			fmt.Println("Pre-Metrics creation")
 			if t.LatencyMetrics, err = metrics.NewMetrics(mp.config, t.Target); err != nil {
 				mp.logger.Errorf(err.Error())
+				fmt.Println("Err: %v", err.Error())
 				return
 			}
+			fmt.Println("METRICS CREATED")
 			probeCtx, _ := context.WithDeadline(ctx, time.Now().Add(mp.interval()))
 			start := time.Now()
 			exitStatus, err := mp.runProbeForTarget(probeCtx, t)
 			if err != nil {
 				mp.logger.Errorf(err.Error())
-				t.LatencyMetrics.ProbeOpLatency[metrics.TotalProbeRun][exitStatus].Metric("latency").AddFloat64(time.Now().Sub(start).Seconds())
+				t.LatencyMetrics.ProbeOpLatency[metrics.TotalProbeRun][exitStatus].Metric("hermes_probe_latency_s").AddFloat64(time.Now().Sub(start).Seconds())
 				return
 			}
-			t.LatencyMetrics.ProbeOpLatency[metrics.TotalProbeRun][metrics.Success].Metric("latency").AddFloat64(time.Now().Sub(start).Seconds())
+			t.LatencyMetrics.ProbeOpLatency[metrics.TotalProbeRun][metrics.Success].Metric("hermes_probe_latency_s").AddFloat64(time.Now().Sub(start).Seconds())
 			reportMetrics(t.LatencyMetrics, metricChan)
 		}(t)
 	}
@@ -180,68 +191,31 @@ func (mp *Probe) runProbe(ctx context.Context, metricChan chan<- *cpmetrics.Even
 //	- error: returns an error if one occurred during the probe run.
 func (mp *Probe) runProbeForTarget(ctx context.Context, target *Target) (metrics.ExitStatus, error) {
 	// TODO(evanSpendlove): Add implementation of runProbeForTarget, i.e. Hermes probing algorithm.
-	
-	return metrics.Success, nil
-}
 
-func runCreate(){
-	
-ctx := context.Background()
-  client :=storage.NewClient()
-  fileID := int32(6)
-  fileSize := 50
-  target := Target{
-       &probepb.Target{
-           Name:                   "hermes",
-           TargetSystem:           probepb.Target_GOOGLE_CLOUD_STORAGE,
-           TotalSpaceAllocatedMib: int64(1000),
-           BucketName:             "test_bucket_probe0",
-       },
-       &journalpb.StateJournal{
-           Filenames: make(map[int32]string),
-       },
-       &metrics.Metrics{},
-   }
-   hp := &probepb.HermesProbeDef{
-       ProbeName: proto.String("createfile_test"),
-       Targets: []*probepb.Target{
-           &probepb.Target{
-               Name:                   "hermes",
-               TargetSystem:           probepb.Target_GOOGLE_CLOUD_STORAGE,
-               TotalSpaceAllocatedMib: int64(100),
-               BucketName:             "test_bucket_probe0",
-           },
-       },
-       TargetSystem: probepb.HermesProbeDef_GCS.Enum(),
-       IntervalSec:  proto.Int32(3600),
-       TimeoutSec:   proto.Int32(60),
-       ProbeLatencyDistribution: &metricpb.Dist{
-           Buckets: &metricpb.Dist_ExplicitBuckets{
-               ExplicitBuckets: "0.1,0.2,0.4,0.6,0.8,1.6,3.2,6.4,12.8,1",
-           },
-       },
-       ApiCallLatencyDistribution: &metricpb.Dist{
-           Buckets: &metricpb.Dist_ExplicitBuckets{
-               ExplicitBuckets: "0.1,0.2,0.4,0.6,0.8,1.6,3.2,6.4,12.8,1",
-           },
-       },
-   }
-   probeTarget := &probepb.Target{
-       Name:                   "hermes",
-       TargetSystem:           probepb.Target_GOOGLE_CLOUD_STORAGE,
-       TotalSpaceAllocatedMib: int64(100),
-       BucketName:             "test_bucket_probe0",
-   }
- 
-   var err error
-   if target.LatencyMetrics, err = metrics.NewMetrics(hp, probeTarget); err != nil {
-       t.Fatalf("Metric set up failed due to %s", err.Error())
-   }
- 
-   if err := CreateFile(ctx, target, fileID, fileSize, client, nil); err != nil {
-       t.Error(err)
-   }	
-	
-	
-	
+	const fileSize = 10
+
+	c, err := storage.NewClient(ctx)
+	if err != nil {
+		return metrics.ProbeFailed, err
+	}
+	client := stiface.AdaptClient(c)
+
+	// SETUP HERE
+	for id := 1; id < 50; id++ {
+		if target.Journal.Filenames[int32(id)] == "" {
+			// File does not exist
+			if err := CreateFile(ctx, target, int32(id), fileSize, client, mp.logger); err != nil {
+				return metrics.ProbeFailed, err
+			}
+		}
+	}
+
+	// DELETE HERE
+	/*
+		if err := CreateFile(ctx, target, int32(id), fileSize, client, mp.logger); err != nil {
+			return metrics.ProbeFailed, err
+		}
+	*/
+
+	return metrics.Success, nil
 }
