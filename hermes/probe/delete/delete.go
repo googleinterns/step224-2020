@@ -61,7 +61,7 @@ func DeleteFile(ctx context.Context, fileID int32, target *probe.Target, client 
 	bucket := target.Target.GetBucketName()
 
 	if fileID < minFileIDToDelete || fileID >= minFileIDToDelete+numberOfDeletableFiles {
-		return fileID, fmt.Errorf("deleteFile(%q, %q) failed; status %v: expected fileID %d to be within valid inclusive range: 11-50", bucket, fileID, metrics.InvalidArgument, fileID)
+		return fileID, fmt.Errorf("DeleteFile(%q, %q) failed; status %v: expected fileID %d to be within valid inclusive range: 11-50", bucket, fileID, metrics.InvalidArgument, fileID)
 	}
 
 	// TODO(evanSpendlove): Add custom error object to return value and modify all returns.
@@ -91,7 +91,7 @@ func DeleteFile(ctx context.Context, fileID int32, target *probe.Target, client 
 		}
 
 		target.LatencyMetrics.APICallLatency[metrics.APIDeleteFile][status].Metric(apiLatency).AddFloat64(time.Now().Sub(start).Seconds())
-		return fileID, fmt.Errorf("deleteFile(%q, %q) failed; status %v: %w", bucket, filename, status, err)
+		return fileID, fmt.Errorf("DeleteFile(%q, %q) failed; status %v: %w", bucket, filename, status, err)
 	}
 	target.LatencyMetrics.APICallLatency[metrics.APIDeleteFile][metrics.Success].Metric(apiLatency).AddFloat64(time.Now().Sub(start).Seconds())
 
@@ -107,12 +107,12 @@ func DeleteFile(ctx context.Context, fileID int32, target *probe.Target, client 
 		if obj.Name == filename {
 			status := metrics.ProbeFailed
 			target.LatencyMetrics.APICallLatency[metrics.APIListFiles][status].Metric(apiLatency).AddFloat64(time.Now().Sub(start).Seconds())
-			return fileID, fmt.Errorf("deleteFile(%q, %q) failed; status %v: object %v still listed after delete", bucket, filename, status, obj.Name)
+			return fileID, fmt.Errorf("DeleteFile(%q, %q) failed; status %v: object %v still listed after delete", bucket, filename, status, obj.Name)
 		}
 		if err != nil {
 			status := metrics.BucketMissing
 			target.LatencyMetrics.APICallLatency[metrics.APIListFiles][status].Metric(apiLatency).AddFloat64(time.Now().Sub(start).Seconds())
-			return fileID, fmt.Errorf("deleteFile(%q, %q) failed; status %v: %w", bucket, filename, status, err)
+			return fileID, fmt.Errorf("DeleteFile(%q, %q) failed; status %v: %w", bucket, filename, status, err)
 		}
 	}
 	target.LatencyMetrics.APICallLatency[metrics.APIListFiles][metrics.Success].Metric(apiLatency).AddFloat64(time.Now().Sub(start).Seconds())
