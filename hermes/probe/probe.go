@@ -48,7 +48,7 @@ type ProbeError struct {
 // NewProbeError returns a new ProbeError containing the error and status passed.
 // Arguments:
 //	- status: pass the exit status associated with this error.
-//	- err: pass the error to be embedded.
+//	- err: the underlying error.
 // Returns:
 //	- ProbeError: returns a new ProbeError object containing the args passed.
 func NewProbeError(status metrics.ExitStatus, err error) *ProbeError {
