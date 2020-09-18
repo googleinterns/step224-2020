@@ -19,6 +19,7 @@ package create
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -84,7 +85,7 @@ func TestFileName(t *testing.T) {
 		if err != nil {
 			t.Errorf("{%d, %d}.fileName() failed and returned an unexpected error %w", tc.file.id, tc.file.sizeBytes, err)
 		}
-		if got[:fileNamePrefixLength] != tc.want {
+		if !strings.HasPrefix(got, tc.want) {
 			t.Errorf("{%d, %d}.fileName() =  %qchecksum expected %qchecksum", tc.file.id, tc.file.sizeBytes, got[:fileNamePrefixLength], tc.want)
 		}
 	}
