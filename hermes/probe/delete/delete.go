@@ -35,9 +35,9 @@ import (
 )
 
 const (
-	apiLatency             = "hermes_api_latency_seconds" // TODO(evanSpendlove) add this constant to metrics.go
-	minFileIDToDelete      = 11                           // we can delete files starting from the file Hermes_11
-	numberOfDeletableFiles = 40                           // there are 40 files to delete from [Hermes_11,Hermes_50]
+	apiLatency        = "hermes_api_latency_seconds" // TODO(evanSpendlove) add this constant to metrics.go
+	minFileIDToDelete = 11                           // we can delete files starting from the file Hermes_11
+	maxFileIDToDelete = 50                           // there are 40 files to delete from [Hermes_11,Hermes_50]
 )
 
 // DeleteFile deletes the file, corresponding to the ID passed, in the target storage system bucket.
@@ -60,7 +60,7 @@ const (
 func DeleteFile(ctx context.Context, fileID int32, target *probe.Target, client stiface.Client, logger *logger.Logger) (int32, error) {
 	bucket := target.Target.GetBucketName()
 
-	if fileID < minFileIDToDelete || fileID >= minFileIDToDelete+numberOfDeletableFiles {
+	if fileID < minFileIDToDelete || fileID > maxFileIDToDelete {
 		return fileID, fmt.Errorf("DeleteFile(%q, %q) failed; status %v: expected fileID %d to be within valid inclusive range: 11-50", bucket, fileID, metrics.InvalidArgument, fileID)
 	}
 
@@ -129,5 +129,5 @@ func DeleteFile(ctx context.Context, fileID int32, target *probe.Target, client 
 //	- ID: returns the ID of the file to be deleted.
 func PickFileToDelete() int32 {
 	rand.Seed(time.Now().UnixNano())
-	return int32(rand.Intn(numberOfDeletableFiles) + minFileIDToDelete)
+	return int32(rand.Intn(maxFileIDToDelete-minFileIDToDelete+1) + minFileIDToDelete)
 }
