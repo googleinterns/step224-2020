@@ -171,12 +171,7 @@ func CreateFile(ctx context.Context, target *probe.Target, fileID int32, fileSiz
 	query := &storage.Query{Prefix: fileNamePrefix}
 	start = time.Now()
 	objIter := client.Bucket(bucketName).Objects(ctx, query)
-	finish := time.Now()
 	obj, err := objIter.Next()
-	if err != nil {
-		target.LatencyMetrics.APICallLatency[metrics.APIListFiles][metrics.FileMissing].Metric(hermesAPILatencySeconds).AddFloat64(finish.Sub(start).Seconds())
-		return fmt.Errorf("CreateFile check failed: %w", err)
-	}
 	var namesFound []string
 	for {
 		if obj == nil {
@@ -184,6 +179,11 @@ func CreateFile(ctx context.Context, target *probe.Target, fileID int32, fileSiz
 		}
 		namesFound = append(namesFound, obj.Name)
 		obj, err = objIter.Next()
+	}
+	finish := time.Now()
+	if len(namesFound) == 0 {
+		target.LatencyMetrics.APICallLatency[metrics.APIListFiles][metrics.FileMissing].Metric(hermesAPILatencySeconds).AddFloat64(finish.Sub(start).Seconds())
+		return fmt.Errorf("CreateFile check failed: %w", err)
 	}
 	if len(namesFound) > 1 {
 		fmt.Errorf("expected exactly one file in bucket %q with prefix %q; found %d: %v", bucketName, fileNamePrefix, len(namesFound), namesFound)
