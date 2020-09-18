@@ -47,6 +47,11 @@ const (
 	CreateFile
 )
 
+// String returns the ProbeOperation as a string.
+func (p ProbeOperation) String() string {
+	return ProbeOpName[p]
+}
+
 // APICall represents a possible API call metric label.
 type APICall int
 
@@ -60,6 +65,11 @@ const (
 	// APIGetFile is the metric label for the get file API call.
 	APIGetFile
 )
+
+// String returns the APICall as a string.
+func (a APICall) String() string {
+	return APICallName[a]
+}
 
 // ExitStatus represents a possible exit status metric label.
 type ExitStatus int
@@ -89,6 +99,10 @@ const (
 	// AllFilesMissing indicates that all of the Hermes files were missing.
 	AllFilesMissing
 )
+
+func (e ExitStatus) String() string {
+	return ExitStatusName[e]
+}
 
 var (
 	// ProbeOpName maps ProbeOperation constants to their metric label string equivalent.
@@ -121,6 +135,9 @@ var (
 		UnknownFileFound:     "unknown_file_found",
 		AllFilesMissing:      "all_files_missing",
 	}
+
+	ProbeLatency = "hermes_probe_latency_seconds"
+	APILatency   = "hermes_api_latency_Seconds"
 )
 
 // Metrics stores the cumulative metrics for probe runs for a target.
@@ -157,7 +174,7 @@ func NewMetrics(conf *probepb.HermesProbeDef, target *probepb.Target) (*Metrics,
 		m.ProbeOpLatency[op] = make(map[ExitStatus]*metrics.EventMetrics, len(ExitStatusName))
 		for e := range ExitStatusName {
 			m.ProbeOpLatency[op][e] = metrics.NewEventMetrics(time.Now()).
-				AddMetric("hermes_probe_latency_seconds", probeOpLatDist.Clone()).
+				AddMetric(ProbeLatency, probeOpLatDist.Clone()).
 				AddLabel("storage_system", target.GetTargetSystem().String()).
 				AddLabel("target", fmt.Sprintf("%s:%s", target.GetName(), target.GetBucketName())).
 				AddLabel("probe_operation_type", ProbeOpName[op]).
@@ -174,7 +191,7 @@ func NewMetrics(conf *probepb.HermesProbeDef, target *probepb.Target) (*Metrics,
 		m.APICallLatency[call] = make(map[ExitStatus]*metrics.EventMetrics, len(ExitStatusName))
 		for e := range ExitStatusName {
 			m.APICallLatency[call][e] = metrics.NewEventMetrics(time.Now()).
-				AddMetric("hermes_api_latency_seconds", apiCallLatDist.Clone()).
+				AddMetric(APILatency, apiCallLatDist.Clone()).
 				AddLabel("storage_system", target.GetTargetSystem().String()).
 				AddLabel("target", fmt.Sprintf("%s:%s", target.GetName(), target.GetBucketName())).
 				AddLabel("probe_operation_type", APICallName[call]).
