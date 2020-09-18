@@ -32,6 +32,7 @@ import (
 	"github.com/googleapis/google-cloud-go-testing/storage/stiface"
 	"github.com/googleinterns/step224-2020/hermes/probe"
 	"github.com/googleinterns/step224-2020/hermes/probe/metrics"
+	"google.golang.org/api/iterator"
 
 	pb "github.com/googleinterns/step224-2020/hermes/proto"
 )
@@ -171,25 +172,27 @@ func CreateFile(ctx context.Context, target *probe.Target, fileID int32, fileSiz
 	query := &storage.Query{Prefix: fileNamePrefix}
 	start = time.Now()
 	objIter := client.Bucket(bucketName).Objects(ctx, query)
-	obj, err := objIter.Next()
 	var namesFound []string
 	for {
-		if obj == nil {
+		obj, err := objIter.Next()
+		if err == iterator.Done {
 			break
 		}
+		if err != nil {
+			return fmt.Errorf("CreateFile check failed due to: %w", err)
+		}
 		namesFound = append(namesFound, obj.Name)
-		obj, err = objIter.Next()
 	}
 	finish := time.Now()
 	if len(namesFound) == 0 {
 		target.LatencyMetrics.APICallLatency[metrics.APIListFiles][metrics.FileMissing].Metric(hermesAPILatencySeconds).AddFloat64(finish.Sub(start).Seconds())
-		return fmt.Errorf("CreateFile check failed: %w", err)
+		return fmt.Errorf("CreateFile check failed no files with prefix %q found", fileNamePrefix)
 	}
-	if len(namesFound) > 1 {
-		fmt.Errorf("expected exactly one file in bucket %q with prefix %q; found %d: %v", bucketName, fileNamePrefix, len(namesFound), namesFound)
+	if len(namesFound) != 1 {
+		return fmt.Errorf("expected exactly one file in bucket %q with prefix %q; found %d: %v", bucketName, fileNamePrefix, len(namesFound), namesFound)
 	}
 	if namesFound[0] != fileName {
-		fmt.Errorf("CreateFile check failed expected file name present %q got %q", fileName, obj.Name)
+		return fmt.Errorf("CreateFile check failed expected file name present %q got %q", fileName, namesFound[0])
 	}
 	target.LatencyMetrics.APICallLatency[metrics.APIListFiles][metrics.Success].Metric(hermesAPILatencySeconds).AddFloat64(finish.Sub(start).Seconds())
 
