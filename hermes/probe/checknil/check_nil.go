@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
+// Author: Evan Spendlove, GitHub: evanSpendlove
+//
 // Check_nil implements the probe operation for checking if the NIL file is
 // present and reading verifying its contents.
 
@@ -24,24 +26,25 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"reflect"
 	"strconv"
 	"time"
 
 	"cloud.google.com/go/storage"
 	"github.com/golang/protobuf/proto"
 	"github.com/google/cloudprober/logger"
+	"github.com/google/go-cmp/cmp"
 	"github.com/googleapis/google-cloud-go-testing/storage/stiface"
 	"github.com/googleinterns/step224-2020/hermes/probe"
 	"github.com/googleinterns/step224-2020/hermes/probe/metrics"
 	"google.golang.org/api/iterator"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	cpmetrics "github.com/google/cloudprober/metrics"
 	sjpb "github.com/googleinterns/step224-2020/hermes/proto"
 )
 
-// nilFile ...
-// TODO(evanSpendlove): Add doc comment
+// nilFile stores the name, hash and contents of the nil file.
+// It is used when checking or updating the nil file.
 type nilFile struct {
 	name     string
 	hash     string
@@ -74,128 +77,147 @@ func (n *nilFile) reader() io.Reader {
 // storage system. It also reads the intent from the Nil file to identify if
 // Hermes failed to complete the last operation, and completes it if necessary.
 // Arguments:
-//	- ctx: pass the context so this probe can be cancelled if needed.
-//	- target: pass the target run information.
-//	- client: pass an initialised storage client for this target system.
-//	- logger: pass the logger associated with the probe calling this function.
+//	- ctx: context so this probe can be cancelled if needed.
+//	- target: target run information.
+//	- client: initialised storage client for this target system.
+//	- logger: logger associated with the probe calling this function.
 // Returns:
-//	- err:
-// TODO(evanSpendlove): Add err details to return comment
-// TODO(evanSpendlove): Add exit status to return values.
-func CheckNilFile(ctx context.Context, target *probe.Target, client stiface.Client, logger *logger.Logger) (metrics.ExitStatus, error) {
+//	- err: error exit statuses are well defined in metrics.go
+func CheckNilFile(ctx context.Context, target *probe.Target, client stiface.Client, logger *logger.Logger) *probe.ProbeError {
 	bucket := target.Target.GetBucketName()
 
-	file, status, err := checkNilFileExists(ctx, bucket, target, client, logger)
-	if err != nil {
-		return nil, status, err
+	file, err := checkNilFileExists(ctx, bucket, target, client, logger)
+	if err.Status != metrics.Success {
+		return err
 	}
 
-	file, status, err = readNilFile(ctx, file, bucket, target, client, logger)
-	if err != nil {
-		return status, err
+	if file, err = readNilFile(ctx, file, bucket, target, client, logger); err.Status != metrics.Success {
+		return err
 	}
 
-	if status, err = verifyNilFile(ctx, file, target, client, logger); err != nil {
-		return status, err
+	if err = verifyNilFile(ctx, file, target, client, logger); err.Status != metrics.Success {
+		return err
 	}
 
 	logger.Infof("CheckNilFile completed successfully, nil file is valid.")
-	return metrics.Success, nil
+	return probe.NewProbeError(metrics.Success, nil)
 }
 
-// TODO(evanSpendlove): Add doc comment.
-func checkNilFileExists(ctx context.Context, bucket string, target *probe.Target, client stiface.Client, logger *logger.Logger) (*nilFile, metrics.ExitStatus, error) {
-	latency, filename, status, err := RecordLatency(func() (interface{}, metrics.ExitStatus, error) {
+// checkNilFileExists checks that the nil file exists on the target system.
+// Arguments:
+//	- ctx: context so this probe can be cancelled if needed.
+//	- target: target run information.
+//	- client: initialised storage client for this target system.
+//	- logger: logger associated with the probe calling this function.
+// Returns:
+//	- nilFile: a nilFile struct with the file name recorded
+//	- err: error exit statuses are well defined in metrics.go
+func checkNilFileExists(ctx context.Context, bucket string, target *probe.Target, client stiface.Client, logger *logger.Logger) (*nilFile, *probe.ProbeError) {
+	file := &nilFile{}
+
+	err := RecordAPILatency(target.LatencyMetrics.APICallLatency, metrics.APIListFiles, func() *probe.ProbeError {
 		objIter := client.Bucket(bucket).Objects(ctx, &storage.Query{Prefix: "Hermes_Nil"})
 		for {
 			// TODO(evanSpendlove): Review how Nil file is updated and consider multiple nil files being present.
+			// If one, success
+			// If two -> verify whih one reflects the current state of the system and delete the other.
+			// If two and only differ by intent, prefer the one with intent.
 			obj, err := objIter.Next()
 			if err == iterator.Done {
-				return nil, metrics.FileMissing, fmt.Errorf("checkNilFile.list_files_failed: unable to find nil file: %w", err)
+				return probe.NewProbeError(metrics.FileMissing, fmt.Errorf("checkNilFile.list_files_failed: unable to find nil file: %w", err))
 			}
 			if err != nil {
-				return nil, metrics.APICallFailed, fmt.Errorf("checkNilFile.list_files_failed: unable to list files: %w", err)
+				return probe.NewProbeError(metrics.APICallFailed, fmt.Errorf("checkNilFile.list_files_failed: unable to list files: %w", err))
 			}
-			return obj.Name, metrics.Success, nil
+			file.name = obj.Name
+			return probe.NewProbeError(metrics.Success, nil)
 		}
 	})
 
-	RecordAPILatency(target.LatencyMetrics.APICallLatency, metrics.APIListFiles, status, latency)
-	name, ok := filename.(string)
-	if !ok {
-		return nil, metrics.ProbeFailed, fmt.Errorf("failed to assert filename to string")
-	}
-
 	logger.Infof("checkNilFile: nil file located on target storage system.")
-	return &nilFile{name: name}, status, err
+	return file, err
 }
 
-// TODO(evanSpendlove): Add doc comment
-func readNilFile(ctx context.Context, file *nilFile, bucket string, target *probe.Target, client stiface.Client, logger *logger.Logger) (*nilFile, metrics.ExitStatus, error) {
+// checkNilFileExists checks that the nil file exists on the target system.
+// Arguments:
+//	- ctx: context so this probe can be cancelled if needed.
+//	- target: target run information.
+//	- client: initialised storage client for this target system.
+//	- logger: logger associated with the probe calling this function.
+// Returns:
+//	- nilFile: a nilFile struct with the file name recorded
+//	- err: error exit statuses are well defined in metrics.go
+func readNilFile(ctx context.Context, file *nilFile, bucket string, target *probe.Target, client stiface.Client, logger *logger.Logger) (*nilFile, *probe.ProbeError) {
 	fileObject := client.Bucket(bucket).Object(file.name)
+	var reader stiface.Reader
 
-	start := time.Now()
-	reader, err := fileObject.NewReader(ctx)
-	end := time.Now().Sub(start).Seconds()
+	err := RecordAPILatency(target.LatencyMetrics.APICallLatency, metrics.APIGetFile, func() *probe.ProbeError {
+		var err error
+		reader, err = fileObject.NewReader(ctx)
+		if err != nil {
+			return probe.NewProbeError(metrics.FileReadFailure, fmt.Errorf("checkNilFile.read_file_failed: unable to read nil file: %w", err))
+
+		}
+		return probe.NewProbeError(metrics.Success, nil)
+	})
 	defer reader.Close()
-	if err != nil {
-		RecordAPILatency(target.LatencyMetrics.APICallLatency, metrics.APIGetFile, metrics.FileReadFailure, end)
-		return nil, metrics.FileReadFailure, fmt.Errorf("checkNilFile.read_file_failed: unable to read nil file: %w", err)
+
+	if err.Status != metrics.Success {
+		return nil, err
 	}
 
 	logger.Infof("checkNilFile: nil file retrieved from target storage system.")
 
-	file.contents, err = ioutil.ReadAll(reader)
-	if err != nil {
-		RecordAPILatency(target.LatencyMetrics.APICallLatency, metrics.APIGetFile, metrics.FileReadFailure, end)
-		return nil, metrics.FileReadFailure, fmt.Errorf("checkNilFile.read_file_failed: unable to read nil file: %w", err)
+	var readErr error
+	file.contents, readErr = ioutil.ReadAll(reader)
+	if readErr != nil {
+		return nil, probe.NewProbeError(metrics.FileReadFailure, fmt.Errorf("checkNilFile.read_file_failed: unable to read nil file: %w", readErr))
 	}
 
-	RecordAPILatency(target.LatencyMetrics.APICallLatency, metrics.APIGetFile, metrics.Success, end)
 	logger.Infof("checkNilFile: nil file read complete.")
 
-	return file, metrics.Success, nil
+	return file, probe.NewProbeError(metrics.Success, nil)
 }
 
 // TODO(evanSpendlove: Add doc comment
-func verifyNilFile(ctx context.Context, file *nilFile, target *probe.Target, client stiface.Client, logger *logger.Logger) (metrics.ExitStatus, error) {
+func verifyNilFile(ctx context.Context, file *nilFile, target *probe.Target, client stiface.Client, logger *logger.Logger) *probe.ProbeError {
 	hash := sha1.New()
 	if _, err := io.Copy(hash, file.reader()); err != nil {
-		return metrics.ProbeFailed, fmt.Errorf("checkNilFile.compute_checksum_failed: unable to compute checksum of file contents: %w", err)
+		return probe.NewProbeError(metrics.ProbeFailed, fmt.Errorf("checkNilFile.compute_checksum_failed: unable to compute checksum of file contents: %w", err))
 	}
 	file.hash = fmt.Sprintf("%x", hash.Sum(nil))
 
 	if !file.validateChecksum() {
-		return metrics.FileCorrupted, fmt.Errorf("checkNilFile.checksum of file did not match filename")
+		return probe.NewProbeError(metrics.FileCorrupted, fmt.Errorf("checkNilFile.checksum of file did not match filename"))
 	}
 
 	journal := &sjpb.StateJournal{}
 	if err := proto.Unmarshal(file.contents, journal); err != nil {
-		return metrics.FileReadFailure, fmt.Errorf("checkNilFile.unmarshal_failed: unable to unmarshal nil file proto: %w", err)
+		return probe.NewProbeError(metrics.FileReadFailure, fmt.Errorf("checkNilFile.unmarshal_failed: unable to unmarshal nil file proto: %w", err))
 	}
 
 	logger.Infof("checkNilFile: unmarshal complete for nil file proto.")
 
-	if status, err := resolveIntent(ctx, journal, target, client, logger); err != nil {
-		return status, err
+	if err := resolveIntent(ctx, journal, target, client, logger); err != nil {
+		return err
 	}
 
-	if !reflect.DeepEqual(journal, target.Journal) {
-		return metrics.FileCorrupted, fmt.Errorf("checkNilFile.nil file contents do not match expected file contents")
+	if diff := cmp.Diff(target.Journal, journal, protocmp.Transform()); diff != "" {
+		return probe.NewProbeError(metrics.FileCorrupted, fmt.Errorf("Journal mismatch (-want +got):\n%s", diff))
 	}
 
 	logger.Infof("checkNilFile: nil file contents verified against in-memory struct.")
 
-	return metrics.Success, nil
+	return probe.NewProbeError(metrics.Success, nil)
 }
 
 // TODO(evanSpendlove): Add doc comment
-func resolveIntent(ctx context.Context, journal *sjpb.StateJournal, target *probe.Target, client stiface.Client, logger *logger.Logger) (metrics.ExitStatus, error) {
+func resolveIntent(ctx context.Context, journal *sjpb.StateJournal, target *probe.Target, client stiface.Client, logger *logger.Logger) *probe.ProbeError {
 	// Read intent, if not nil, check intent validity and update nil file in memory and defer nil file write.
 	if journal.Intent != nil {
 		fileID, err := strconv.Atoi(journal.Intent.Filename[len("Hermes_"):len("Hermes_ID")])
 		if err != nil {
-			return metrics.ProbeFailed, err
+			return probe.NewProbeError(metrics.ProbeFailed, err)
 		}
 		switch journal.Intent.FileOperation {
 		case sjpb.Intent_CREATE:
@@ -215,70 +237,66 @@ func resolveIntent(ctx context.Context, journal *sjpb.StateJournal, target *prob
 		}
 		journal.Intent = nil
 	}
-	return metrics.Success, nil
+	return probe.NewProbeError(metrics.Success, nil)
 }
 
 // TODO(evanSpendlove): Add doc comment
 // TODO(evanSpendlove): Add existing nil file deletion to here
 // What do we do if the existing Nil file isn't deleted when Hermes restarts?
-func UpdateNilFile(ctx context.Context, target *probe.Target, client stiface.Client, logger *logger.Logger) (metrics.ExitStatus, error) {
+func UpdateNilFile(ctx context.Context, target *probe.Target, client stiface.Client, logger *logger.Logger) *probe.ProbeError {
 	file := &nilFile{}
 	var err error
 
 	file.contents, err = proto.Marshal(target.Journal)
 	if err != nil {
-		return metrics.ProbeFailed, err
+		return probe.NewProbeError(metrics.ProbeFailed, err)
 	}
 
 	hash := sha1.New()
 	if _, err := io.Copy(hash, file.reader()); err != nil {
-		return metrics.ProbeFailed, fmt.Errorf("checkNilFile.compute_checksum_failed: unable to compute checksum of file contents: %w", err)
+		return probe.NewProbeError(metrics.ProbeFailed, fmt.Errorf("checkNilFile.compute_checksum_failed: unable to compute checksum of file contents: %w", err))
 	}
 
-	file.name = fmt.Sprintf("Hermes_Nil_%x", hash)
+	file.name = fmt.Sprintf("Hermes_Nil_%x", hash.Sum(nil))
 
 	bucket := target.Target.GetBucketName()
 
 	logger.Infof("Nil file object created, proceeding to upload.")
 
-	start := time.Now()
-	wc := client.Bucket(bucket).Object(file.name).NewWriter(ctx)
-	_, err = io.Copy(wc, file.reader())
-	end := time.Now().Sub(start).Seconds()
-	if err != nil {
-		var status metrics.ExitStatus
-		switch err {
-		case storage.ErrBucketNotExist:
-			status = metrics.BucketMissing
-		default:
-			status = metrics.ProbeFailed
+	var writer stiface.Writer
+
+	if err := RecordAPILatency(target.LatencyMetrics.APICallLatency, metrics.APICreateFile, func() *probe.ProbeError {
+		writer = client.Bucket(bucket).Object(file.name).NewWriter(ctx)
+		_, err = io.Copy(writer, file.reader())
+		if err != nil {
+			switch err {
+			case storage.ErrBucketNotExist:
+				return probe.NewProbeError(metrics.BucketMissing, err)
+			default:
+				return probe.NewProbeError(metrics.ProbeFailed, err)
+			}
+			return probe.NewProbeError(metrics.APICallFailed, err)
 		}
-		RecordAPILatency(target.LatencyMetrics.APICallLatency, metrics.APICreateFile, status, end)
-		return metrics.APICallFailed, err
+		return probe.NewProbeError(metrics.Success, nil)
+	}); err.Status != metrics.Success {
+		return err
 	}
 
-	if err := wc.Close(); err != nil {
-		return metrics.APICallFailed, err
+	if err := writer.Close(); err != nil {
+		return probe.NewProbeError(metrics.APICallFailed, err)
 	}
-
-	RecordAPILatency(target.LatencyMetrics.APICallLatency, metrics.APICreateFile, metrics.Success, end)
 
 	target.Journal.Intent = nil
 
 	logger.Infof("Nil file update complete.")
 
-	return metrics.Success, nil
+	return probe.NewProbeError(metrics.Success, nil)
 }
 
 // TODO(evanSpendlove): Add doc comment
-func RecordLatency(f func() (interface{}, metrics.ExitStatus, error)) (float64, interface{}, metrics.ExitStatus, error) {
+func RecordAPILatency(m map[metrics.APICall]map[metrics.ExitStatus]*cpmetrics.EventMetrics, call metrics.APICall, f func() *probe.ProbeError) *probe.ProbeError {
 	start := time.Now()
-	obj, status, err := f()
-	end := time.Now().Sub(start).Seconds()
-	return end, obj, status, err
-}
-
-// TODO(evanSpendlove): Add doc comment
-func RecordAPILatency(m map[metrics.APICall]map[metrics.ExitStatus]*cpmetrics.EventMetrics, call metrics.APICall, status metrics.ExitStatus, latency float64) {
-	m[call][status].Metric("hermes_api_latency_seconds").AddFloat64(latency)
+	err := f()
+	m[call][err.Status].Metric("hermes_api_latency_seconds").AddFloat64(time.Now().Sub(start).Seconds())
+	return err
 }
