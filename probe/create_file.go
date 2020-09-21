@@ -1,4 +1,0 @@
-package probe
-import(
- "fmt"
-)
