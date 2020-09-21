@@ -14,9 +14,10 @@
 //
 // Author: Alicja Kwiecinska, GitHub: alicjakwie
 //
-// package read contains all of the logic necessary to verify the availability and consistency of the file contents and names in GCS.
+// Package read contains all of the logic necessary to verify the availability and consistency of the file contents and names in GCS.
 //
 // TODO(#76) change the type of fileID to int
+// TODO(#79) unify  total space alocated Mib or MiB
 package read
 
 import (
@@ -52,7 +53,7 @@ const (
 //          target: contains information about target storage system, carries an intent log in the form of a StateJournal and it used to export metrics.
 //          fileID: the unique identifer of every file, it cannot be repeated. It needs to be in the range [minFileID, maxFileID]. FileID 0 is reserved for a special file called the NIL file.
 //          client: is a storage client. It is used as an interface to interact with the target storage system.
-//          logger: a cloudprober logger used to record the exit status of the CreateFile operation in a target bucket. The logger passed MUST be a valid logger.
+//          logger: a cloudprober logger used to record the exit status of the ReadFile operation in a target bucket. The logger passed MUST be a valid logger.
 // Returns:
 //          error: an error string with detailed information about the status and fileID. Nil is returned when the operation is successful.
 func ReadFile(ctx context.Context, target *probe.Target, fileID int32, fileSize int, client stiface.Client, logger *logger.Logger) error {
