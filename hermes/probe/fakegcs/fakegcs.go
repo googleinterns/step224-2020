@@ -57,7 +57,14 @@ func NewClient() stiface.Client {
 func (o fakeObjectHandle) NewWriter(context.Context) stiface.Writer {
 	return &fakeWriter{obj: o}
 }
-
+func (o fakeObjectHandle) Delete(context.Context) error {
+	bucket, ok := o.c.buckets[o.bucketName]
+	if !ok {
+		return fmt.Errorf("fakeObjectHandle.Delete(): bucket %q not found", o.bucketName)
+	}
+	delete(bucket.objects, o.name)
+	return nil
+}
 func (b fakeBucketHandle) Create(_ context.Context, _ string, attrs *storage.BucketAttrs) error {
 	if _, ok := b.c.buckets[b.name]; ok {
 		return fmt.Errorf("bucket %q already exists", b.name)
