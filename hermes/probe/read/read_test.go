@@ -26,7 +26,7 @@ func TestReadFile(t *testing.T) {
 		&probepb.Target{
 			Name:                   "hermes",
 			TargetSystem:           probepb.Target_GOOGLE_CLOUD_STORAGE,
-			TotalSpaceAllocatedMib: int64(1000),
+			TotalSpaceAllocatedMib: int64(1),
 			BucketName:             "test_bucket_probe0",
 		},
 		&journalpb.StateJournal{
@@ -97,13 +97,8 @@ func TestReadFile(t *testing.T) {
 		if err := create.CreateFile(ctx, target, tc.fileIDCreate, fileSizeBytes, client, logger); err != nil {
 			t.Fatalf("CreateFile(fileID: %d) set up failed %v", tc.fileIDCreate, err)
 		}
-		err = ReadFile(ctx, target, tc.fileIDRead, fileSizeBytes, client, logger)
-		if err != nil && !tc.wantErr {
-			t.Errorf("ReadFile(fileID: %d) = %w, expected: nil", tc.fileIDRead, err)
+		if err := ReadFile(ctx, target, tc.fileIDRead, fileSizeBytes, client, logger); (err != nil) != tc.wantErr {
+			t.Errorf("ReadFile(fileID: %d) = %w, expected: %v", tc.fileIDRead, err, tc.wantErr)
 		}
-		if tc.wantErr && err == nil {
-			t.Errorf("ReadFile(fileID: %d) = %w, expected an error", tc.fileIDRead, err)
-		}
-
 	}
 }
