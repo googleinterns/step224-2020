@@ -18,113 +18,108 @@
 //
 // TODO(#76) change the type of fileID to int
 // TODO(#79) unify  total space alocated Mib or MiB
+
 package read
 
 import (
 	"context"
-	"crypto/sha1"
-	"fmt"
-	"io"
-	"time"
+	"testing"
 
-	"cloud.google.com/go/storage"
+	"github.com/golang/protobuf/proto"
 	"github.com/google/cloudprober/logger"
-	"github.com/googleapis/google-cloud-go-testing/storage/stiface"
 	"github.com/googleinterns/step224-2020/hermes/probe"
+	"github.com/googleinterns/step224-2020/hermes/probe/create"
+	"github.com/googleinterns/step224-2020/hermes/probe/fakegcs"
 	"github.com/googleinterns/step224-2020/hermes/probe/metrics"
-	"google.golang.org/api/iterator"
+
+	metricpb "github.com/google/cloudprober/metrics/proto"
+	probepb "github.com/googleinterns/step224-2020/config/proto"
+	journalpb "github.com/googleinterns/step224-2020/hermes/proto"
 )
 
 const (
-	// universal format of the names of files in the storage system Hermes_ID_checksum
-	FileNameFormat          = "Hermes_%02d_%x"
-	minFileID               = 1
-	maxFileID               = 50
-	maxFileSizeBytes        = 1000
-	hermesAPILatencySeconds = "hermes_api_latency_seconds"
+	fileSizeBytes     = 100
+	readTestProbeName = "read_test_probe"
 )
 
-func verifyFileExists(ctx context.Context, client stiface.Client, bucketName string, target *probe.Target, fileName string, fileID int32) error {
-	fileNamePrefix := fmt.Sprintf(FileNameFormat, fileID, "")
-	query := &storage.Query{Prefix: fileNamePrefix}
-	start := time.Now()
-	objIter := client.Bucket(bucketName).Objects(ctx, query)
-	var namesFound []string
-	for {
-		obj, err := objIter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return fmt.Errorf("existence check for fileID: %d failed due to: %w", fileID, err)
-		}
-		namesFound = append(namesFound, obj.Name)
+func TestReadFile(t *testing.T) {
+	target := &probe.Target{
+		&probepb.Target{
+			Name:                   "hermes",
+			TargetSystem:           probepb.Target_GOOGLE_CLOUD_STORAGE,
+			TotalSpaceAllocatedMib: 1,
+			BucketName:             "test_bucket_probe0",
+		},
+		&journalpb.StateJournal{
+			Filenames: make(map[int32]string),
+		},
+		&metrics.Metrics{},
 	}
-	finish := time.Now()
-	if len(namesFound) == 0 {
-		target.LatencyMetrics.APICallLatency[metrics.APIListFiles][metrics.FileMissing].Metric(hermesAPILatencySeconds).AddFloat64(finish.Sub(start).Seconds())
-		return fmt.Errorf("could not read file as the file with the provided ID %d does not exist in bucket %q", fileID, bucketName)
+	hp := &probepb.HermesProbeDef{
+		ProbeName: proto.String("createfile_test"),
+		Targets: []*probepb.Target{
+			&probepb.Target{
+				Name:                   "hermes",
+				TargetSystem:           probepb.Target_GOOGLE_CLOUD_STORAGE,
+				TotalSpaceAllocatedMib: int64(1),
+				BucketName:             "test_bucket_probe0",
+			},
+		},
+		TargetSystem: probepb.HermesProbeDef_GCS.Enum(),
+		IntervalSec:  proto.Int32(3600),
+		TimeoutSec:   proto.Int32(60),
+		ProbeLatencyDistribution: &metricpb.Dist{
+			Buckets: &metricpb.Dist_ExplicitBuckets{
+				ExplicitBuckets: "0.1,0.2,0.4,0.6,0.8,1.6,3.2,6.4,12.8,1",
+			},
+		},
+		ApiCallLatencyDistribution: &metricpb.Dist{
+			Buckets: &metricpb.Dist_ExplicitBuckets{
+				ExplicitBuckets: "0.1,0.2,0.4,0.6,0.8,1.6,3.2,6.4,12.8,1",
+			},
+		},
 	}
-	if len(namesFound) != 1 {
-		return fmt.Errorf("check failed for ID %d expected exactly one file in bucket %q with prefix %q; found %d: %v", fileID, bucketName, fileNamePrefix, len(namesFound), namesFound)
+	probeTarget := &probepb.Target{
+		Name:                   "hermes",
+		TargetSystem:           probepb.Target_GOOGLE_CLOUD_STORAGE,
+		TotalSpaceAllocatedMib: 1,
+		BucketName:             "test_bucket_probe0",
 	}
-	if namesFound[0] != fileName {
-		return fmt.Errorf("check failed  for ID %d expected file name present %q got %q", fileID, fileName, namesFound[0])
-	}
-	target.LatencyMetrics.APICallLatency[metrics.APIListFiles][metrics.Success].Metric(hermesAPILatencySeconds).AddFloat64(finish.Sub(start).Seconds())
-	return nil
-}
 
-// ReadFile creates and stores a file with randomized contents in the target storage system.
-// Before it creates and stores a file it logs an intent to do so in the target storage system's journal.
-// It verifies that the creation and storage process was successful.
-// Finally, it updates the filenames map in the target's journal and record the exit status in the logger.
-// Arguments:
-//          ctx: it carries deadlines and cancellation signals that might orinate from the main probe located in probe.go.
-//          target: contains information about target storage system, carries an intent log in the form of a StateJournal and it used to export metrics.
-//          fileID: the unique identifer of every file, it cannot be repeated. It needs to be in the range [minFileID, maxFileID]. FileID 0 is reserved for a special file called the NIL file.
-//          client: is a storage client. It is used as an interface to interact with the target storage system.
-//          logger: a cloudprober logger used to record the exit status of the ReadFile operation in a target bucket. The logger passed MUST be a valid logger.
-// Returns:
-//          error: an error string with detailed information about the status and fileID. Nil is returned when the operation is successful.
-func ReadFile(ctx context.Context, target *probe.Target, fileID int32, fileSize int, client stiface.Client, logger *logger.Logger) error {
-	if fileID < minFileID || fileID > maxFileID {
-		return fmt.Errorf("invalid argument: fileID = %d; want %d <= fileID <= %d", fileID, minFileID, maxFileID)
+	var err error
+	if target.LatencyMetrics, err = metrics.NewMetrics(hp, probeTarget); err != nil {
+		t.Fatalf("metrics.NewMetrics(): %v", err)
 	}
-	bucketName := target.Target.GetBucketName()
 
-	// Verify that the file is present in the State Journal
-	fileName, ok := target.Journal.Filenames[fileID]
-	if !ok {
-		return fmt.Errorf("file with the ID: %d is missing from the State Journal", fileID)
+	ctx := context.Background()
+	client := fakegcs.NewClient()
+	bucket := "test_bucket_probe0"
+	bucketHandle := client.Bucket(bucket)
+	if err := bucketHandle.Create(ctx, bucket, nil); err != nil {
+		t.Fatalf("error creating bucket %q: %v", bucket, err)
 	}
-	verifyFileExists(ctx, client, bucketName, target, fileName, fileID)
-	start := time.Now()
-	reader, err := client.Bucket(bucketName).Object(fileName).NewReader(ctx)
+	logger, err := logger.NewCloudproberLog(readTestProbeName)
 	if err != nil {
-		var status metrics.ExitStatus
-		switch err {
-		case storage.ErrObjectNotExist:
-			status = metrics.FileMissing
-		case storage.ErrBucketNotExist:
-			status = metrics.BucketMissing
-		default:
-			status = metrics.ProbeFailed
+		t.Fatalf("failed to initialise logger: %v", err)
+	}
+	tests := []struct {
+		fileIDCreate int32
+		fileIDRead   int32
+		wantErr      bool
+	}{
+		{3, 3, false},
+		{2, 51, true},
+		{8, 7, true},
+		{10, 10, false},
+		{4, 4, false},
+		{6, 0, true},
+	}
+	for _, tc := range tests {
+		if err := create.CreateFile(ctx, target, tc.fileIDCreate, fileSizeBytes, client, logger); err != nil {
+			t.Fatalf("CreateFile(fileID: %d) set up failed %v", tc.fileIDCreate, err)
 		}
-		target.LatencyMetrics.APICallLatency[metrics.APIGetFile][status].Metric(hermesAPILatencySeconds).AddFloat64(time.Now().Sub(start).Seconds())
-		return fmt.Errorf(".%q: could not read file %q: %w", status, fileName, err)
+		if err := ReadFile(ctx, target, tc.fileIDRead, fileSizeBytes, client, logger); (err != nil) != tc.wantErr {
+			t.Errorf("ReadFile(fileID: %d) = %w, want: %v", tc.fileIDRead, err, tc.wantErr)
+		}
 	}
-	defer reader.Close()
-	h := sha1.New()
-	if _, err := io.Copy(h, reader); err != nil {
-		return fmt.Errorf("checksum calculation failed io.Copy: %w", err)
-	}
-	gotChecksum := fmt.Sprintf("%x", h.Sum(nil))
-	fileNamePrefix := fmt.Sprintf(FileNameFormat, fileID, "")
-	wantChecksum := fileName[len(fileNamePrefix):]
-	if gotChecksum != wantChecksum {
-		return fmt.Errorf("the calculated checksum: %q does not match the checksum in the file name: %q", gotChecksum, wantChecksum)
-	}
-	logger.Infof("verified consistency for object %q in bucket %q", fileName, bucketName)
-	return nil
 }
