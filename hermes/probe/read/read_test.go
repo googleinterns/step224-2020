@@ -15,14 +15,11 @@ import (
 	journalpb "github.com/googleinterns/step224-2020/hermes/proto"
 )
 
+const (
+	fileSizeBytes = 100
+)
+
 func TestReadFile(t *testing.T) {
-	ctx := context.Background()
-	bucketName := "test_bucket_probe0"
-	client := fakegcs.NewClient()
-	fbh := client.Bucket(bucketName)                         // fakeBucketHandle
-	if err := fbh.Create(ctx, bucketName, nil); err != nil { // creates the bucket with name "test_bucket_probe0"
-		t.Error(err)
-	}
 	target := &probe.Target{
 		&probepb.Target{
 			Name:                   "hermes",
@@ -65,16 +62,44 @@ func TestReadFile(t *testing.T) {
 		TotalSpaceAllocatedMib: int64(100),
 		BucketName:             "test_bucket_probe0",
 	}
+
 	var err error
 	if target.LatencyMetrics, err = metrics.NewMetrics(hp, probeTarget); err != nil {
-		t.Fatalf("Metric set up failed due to %s", err.Error())
+		t.Fatalf("metrics.NewMetrics(): %v", err)
 	}
-	fileID := int32(6)
-	fileSize := 50
-	if err := create.CreateFile(ctx, target, fileID, fileSize, client, nil); err != nil {
+
+	ctx := context.Background()
+	client := fakegcs.NewClient()
+	bucketName := "test_bucket_probe0"
+	fakeBucketHandle := client.Bucket(bucketName)
+	if err := fakeBucketHandle.Create(ctx, bucketName, nil); err != nil {
 		t.Error(err)
 	}
-	if err := ReadFile(ctx, target, fileID, client, nil); err != nil {
-		t.Error(err)
+	logger := fakegcs.NewLogger(ctx).Logger
+
+	tests := []struct {
+		fileIDCreate int32
+		fileIDRead   int32
+		wantErr      bool
+	}{
+		{3, 3, false},
+		{4, 51, true},
+		{10, 12, true},
+		{12, 10, false},
+		{7, 4, false},
+		{6, 0, true},
+	}
+	for _, tc := range tests {
+		if err = create.CreateFile(ctx, target, tc.fileIDCreate, fileSizeBytes, client, logger); err != nil {
+			t.Fatalf("CreateFile(fileID: %d) set up failed %v", tc.fileIDCreate, err)
+		}
+		err = ReadFile(ctx, target, tc.fileIDRead, fileSizeBytes, client, logger)
+		if err != nil && !tc.wantErr {
+			t.Errorf("ReadFile(fileID: %d) = %w, expected: nil", tc.fileIDRead, err)
+		}
+		if tc.wantErr && err == nil {
+			t.Errorf("ReadFile(fileID: %d) = %w, expected an error", tc.fileIDRead, err)
+		}
+
 	}
 }
