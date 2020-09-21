@@ -44,6 +44,37 @@ const (
 	hermesAPILatencySeconds = "hermes_api_latency_seconds"
 )
 
+func verifyFileExists(ctx context.Context, client stiface.Client, bucketName string, target *probe.Target, fileName string, fileID int32) error {
+	fileNamePrefix := fmt.Sprintf(FileNameFormat, fileID, "")
+	query := &storage.Query{Prefix: fileNamePrefix}
+	start := time.Now()
+	objIter := client.Bucket(bucketName).Objects(ctx, query)
+	var namesFound []string
+	for {
+		obj, err := objIter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("existence check for fileID: %d failed due to: %w", fileID, err)
+		}
+		namesFound = append(namesFound, obj.Name)
+	}
+	finish := time.Now()
+	if len(namesFound) == 0 {
+		target.LatencyMetrics.APICallLatency[metrics.APIListFiles][metrics.FileMissing].Metric(hermesAPILatencySeconds).AddFloat64(finish.Sub(start).Seconds())
+		return fmt.Errorf("could not read file as the file with the provided ID %d does not exist in bucket %q", fileID, bucketName)
+	}
+	if len(namesFound) != 1 {
+		return fmt.Errorf("check failed for ID %d expected exactly one file in bucket %q with prefix %q; found %d: %v", fileID, bucketName, fileNamePrefix, len(namesFound), namesFound)
+	}
+	if namesFound[0] != fileName {
+		return fmt.Errorf("check failed  for ID %d expected file name present %q got %q", fileID, fileName, namesFound[0])
+	}
+	target.LatencyMetrics.APICallLatency[metrics.APIListFiles][metrics.Success].Metric(hermesAPILatencySeconds).AddFloat64(finish.Sub(start).Seconds())
+	return nil
+}
+
 // ReadFile creates and stores a file with randomized contents in the target storage system.
 // Before it creates and stores a file it logs an intent to do so in the target storage system's journal.
 // It verifies that the creation and storage process was successful.
@@ -67,37 +98,8 @@ func ReadFile(ctx context.Context, target *probe.Target, fileID int32, fileSize 
 	if !ok {
 		return fmt.Errorf("file with the ID: %d is missing from the State Journal", fileID)
 	}
-
-	// Verify that the file that we want to read is in fact present in the target system
-	fileNamePrefix := fmt.Sprintf(FileNameFormat, fileID, "")
-	query := &storage.Query{Prefix: fileNamePrefix}
+	verifyFileExists(ctx, client, bucketName, target, fileName, fileID)
 	start := time.Now()
-	objIter := client.Bucket(bucketName).Objects(ctx, query)
-	var namesFound []string
-	for {
-		obj, err := objIter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return fmt.Errorf("existence check  for failed due to: %w", err)
-		}
-		namesFound = append(namesFound, obj.Name)
-	}
-	finish := time.Now()
-	if len(namesFound) == 0 {
-		target.LatencyMetrics.APICallLatency[metrics.APIListFiles][metrics.FileMissing].Metric(hermesAPILatencySeconds).AddFloat64(finish.Sub(start).Seconds())
-		return fmt.Errorf("could not read file as the file with the provided ID %d does not exist in bucket %q", fileID, bucketName)
-	}
-	if len(namesFound) != 1 {
-		return fmt.Errorf("check failed for ID %d expected exactly one file in bucket %q with prefix %q; found %d: %v", fileID, bucketName, fileNamePrefix, len(namesFound), namesFound)
-	}
-	if namesFound[0] != fileName {
-		return fmt.Errorf("check failed  for ID %d expected file name present %q got %q", fileID, fileName, namesFound[0])
-	}
-	target.LatencyMetrics.APICallLatency[metrics.APIListFiles][metrics.Success].Metric(hermesAPILatencySeconds).AddFloat64(finish.Sub(start).Seconds())
-
-	start = time.Now()
 	reader, err := client.Bucket(bucketName).Object(fileName).NewReader(ctx)
 	if err != nil {
 		var status metrics.ExitStatus
@@ -118,6 +120,7 @@ func ReadFile(ctx context.Context, target *probe.Target, fileID int32, fileSize 
 		return fmt.Errorf("checksum calculation failed io.Copy: %w", err)
 	}
 	gotChecksum := fmt.Sprintf("%x", h.Sum(nil))
+	fileNamePrefix := fmt.Sprintf(FileNameFormat, fileID, "")
 	wantChecksum := fileName[len(fileNamePrefix):]
 	if gotChecksum != wantChecksum {
 		return fmt.Errorf("the calculated checksum: %q does not match the checksum in the file name: %q", gotChecksum, wantChecksum)
