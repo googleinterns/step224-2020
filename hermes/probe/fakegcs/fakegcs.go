@@ -1,3 +1,21 @@
+// Copyright 2020 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// Authors: Alicja Kwiecinska, Evan Spendlove, GitHub: alicjakwie, espendlove
+//
+// package fakegcs contains all of the logic necessary to create a fake instance of GCS, supporting operations on buckets and object.
+// TODO (#67) add doc strings
 package fakegcs
 
 import (
@@ -6,10 +24,11 @@ import (
 	"fmt"
 	"strings"
 
-	"google.golang.org/api/iterator"
 	"cloud.google.com/go/storage"
 	"github.com/googleapis/google-cloud-go-testing/storage/stiface"
+	"google.golang.org/api/iterator"
 )
+
 type fakeBucket struct {
 	attrs   *storage.BucketAttrs
 	objects map[string][]byte
@@ -39,32 +58,27 @@ type fakeWriter struct {
 	buf bytes.Buffer
 }
 
-type fakeObjectIterator struct {                                                                                                                                    
-	idx  int                                                                                                                                                 
-	objects map[int]*storage.ObjectAttrs                                                                                                                        
-	stiface.ObjectIterator                                                                                                                                      
-}  
+type fakeObjectIterator struct {
+	idx     int
+	objects map[int]*storage.ObjectAttrs
+	stiface.ObjectIterator
+}
 
 type fakeReader struct {
 	stiface.Reader
 	r *bytes.Reader
 }
 
-func NewClient() stiface.Client {
-	return &fakeClient{buckets: map[string]*fakeBucket{}}
+func NewClient() *fakeClient {
+	return &fakeClient{
+		buckets: make(map[string]*fakeBucket),
+	}
 }
 
 func (o fakeObjectHandle) NewWriter(context.Context) stiface.Writer {
 	return &fakeWriter{obj: o}
 }
-func (o fakeObjectHandle) Delete(context.Context) error {
-	bucket, ok := o.c.buckets[o.bucketName]
-	if !ok {
-		return fmt.Errorf("fakeObjectHandle.Delete(): bucket %q not found", o.bucketName)
-	}
-	delete(bucket.objects, o.name)
-	return nil
-}
+
 func (b fakeBucketHandle) Create(_ context.Context, _ string, attrs *storage.BucketAttrs) error {
 	if _, ok := b.c.buckets[b.name]; ok {
 		return fmt.Errorf("bucket %q already exists", b.name)
@@ -74,6 +88,15 @@ func (b fakeBucketHandle) Create(_ context.Context, _ string, attrs *storage.Buc
 	}
 	attrs.Name = b.name
 	b.c.buckets[b.name] = &fakeBucket{attrs: attrs, objects: map[string][]byte{}}
+	return nil
+}
+
+func (o fakeObjectHandle) Delete(context.Context) error {
+	bucket, ok := o.c.buckets[o.bucketName]
+	if !ok {
+		return fmt.Errorf("fakeObjectHandle.Delete(): bucket %q not found", o.bucketName)
+	}
+	delete(bucket.objects, o.name)
 	return nil
 }
 
