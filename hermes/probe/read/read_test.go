@@ -1,19 +1,3 @@
-// Copyright 2020 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     https://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
-// Author: Alicja Kwiecinska, GitHub: alicjakwie
-
 package read
 
 import (
@@ -21,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/google/cloudprober/logger"
 	"github.com/googleinterns/step224-2020/hermes/probe"
 	"github.com/googleinterns/step224-2020/hermes/probe/create"
 	"github.com/googleinterns/step224-2020/hermes/probe/fakegcs"
@@ -32,7 +17,8 @@ import (
 )
 
 const (
-	fileSizeBytes = 100
+	fileSizeBytes     = 100
+	readTestProbeName = "read_test_probe"
 )
 
 func TestReadFile(t *testing.T) {
@@ -54,7 +40,7 @@ func TestReadFile(t *testing.T) {
 			&probepb.Target{
 				Name:                   "hermes",
 				TargetSystem:           probepb.Target_GOOGLE_CLOUD_STORAGE,
-				TotalSpaceAllocatedMib: int64(100),
+				TotalSpaceAllocatedMib: int64(1),
 				BucketName:             "test_bucket_probe0",
 			},
 		},
@@ -87,12 +73,14 @@ func TestReadFile(t *testing.T) {
 	ctx := context.Background()
 	client := fakegcs.NewClient()
 	bucketName := "test_bucket_probe0"
-	fakeBucketHandle := client.Bucket(bucketName)
-	if err := fakeBucketHandle.Create(ctx, bucketName, nil); err != nil {
-		t.Error(err)
+	bucketHandle := client.Bucket(bucketName)
+	if err := bucketHandle.Create(ctx, bucketName, nil); err != nil {
+		t.Fatalf("error creating bucket %q: %v", bucketName, err)
 	}
-	logger := fakegcs.NewLogger(ctx).Logger
-
+	logger, err := logger.NewCloudproberLog(readTestProbeName)
+	if err != nil {
+		t.Fatalf("failed to initialise logger: %v", err)
+	}
 	tests := []struct {
 		fileIDCreate int32
 		fileIDRead   int32
@@ -106,7 +94,7 @@ func TestReadFile(t *testing.T) {
 		{6, 0, true},
 	}
 	for _, tc := range tests {
-		if err = create.CreateFile(ctx, target, tc.fileIDCreate, fileSizeBytes, client, logger); err != nil {
+		if err := create.CreateFile(ctx, target, tc.fileIDCreate, fileSizeBytes, client, logger); err != nil {
 			t.Fatalf("CreateFile(fileID: %d) set up failed %v", tc.fileIDCreate, err)
 		}
 		err = ReadFile(ctx, target, tc.fileIDRead, fileSizeBytes, client, logger)
