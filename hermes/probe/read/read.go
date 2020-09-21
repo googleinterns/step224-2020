@@ -35,16 +35,18 @@ import (
 )
 
 const (
+	// universal format of the names of files in the storage system Hermes_ID_checksum
 	FileNameFormat          = "Hermes_%02d_%x"
 	minFileID               = 1
 	maxFileID               = 50
 	maxFileSizeBytes        = 1000
-	hermesAPILatencySeconds = "hermes_api_latency_s"
+	hermesAPILatencySeconds = "hermes_api_latency_seconds"
 )
 
-// ReadFile reads a file with randomized contents in the target storage system.
-// It verifies the availability and consistency of the file's contents.
-// Finally, it records the exit status in the logger.
+// ReadFile creates and stores a file with randomized contents in the target storage system.
+// Before it creates and stores a file it logs an intent to do so in the target storage system's journal.
+// It verifies that the creation and storage process was successful.
+// Finally, it updates the filenames map in the target's journal and record the exit status in the logger.
 // Arguments:
 //          ctx: it carries deadlines and cancellation signals that might orinate from the main probe located in probe.go.
 //          target: contains information about target storage system, carries an intent log in the form of a StateJournal and it used to export metrics.
@@ -77,20 +79,20 @@ func ReadFile(ctx context.Context, target *probe.Target, fileID int32, fileSize 
 			break
 		}
 		if err != nil {
-			return fmt.Errorf("ReadFile(ID: %d) check failed due to: %w", fileID, err)
+			return fmt.Errorf("existence check  for failed due to: %w", err)
 		}
 		namesFound = append(namesFound, obj.Name)
 	}
 	finish := time.Now()
 	if len(namesFound) == 0 {
 		target.LatencyMetrics.APICallLatency[metrics.APIListFiles][metrics.FileMissing].Metric(hermesAPILatencySeconds).AddFloat64(finish.Sub(start).Seconds())
-		return fmt.Errorf("ReadFile(ID: %d) could not read file as the file with the provided ID does not exist on the target system", fileID)
+		return fmt.Errorf("could not read file as the file with the provided ID %d does not exist in bucket %q", fileID, bucketName)
 	}
 	if len(namesFound) != 1 {
-		return fmt.Errorf("expected exactly one file in bucket %q with prefix %q; found %d: %v", bucketName, fileNamePrefix, len(namesFound), namesFound)
+		return fmt.Errorf("check failed for ID %d expected exactly one file in bucket %q with prefix %q; found %d: %v", fileID, bucketName, fileNamePrefix, len(namesFound), namesFound)
 	}
 	if namesFound[0] != fileName {
-		return fmt.Errorf("ReadFile(ID %d) check failed expected file name present %q got %q", fileID, fileName, namesFound[0])
+		return fmt.Errorf("check failed  for ID %d expected file name present %q got %q", fileID, fileName, namesFound[0])
 	}
 	target.LatencyMetrics.APICallLatency[metrics.APIListFiles][metrics.Success].Metric(hermesAPILatencySeconds).AddFloat64(finish.Sub(start).Seconds())
 
@@ -106,19 +108,19 @@ func ReadFile(ctx context.Context, target *probe.Target, fileID int32, fileSize 
 		default:
 			status = metrics.ProbeFailed
 		}
-		target.LatencyMetrics.APICallLatency[metrics.APIGetFile][status].Metric("hermes_api_latency_s").AddFloat64(time.Now().Sub(start).Seconds())
-		return fmt.Errorf("readFile(id: %d).%v: could not read file %s: %w", fileID, status, fileName, err)
+		target.LatencyMetrics.APICallLatency[metrics.APIGetFile][status].Metric(hermesAPILatencySeconds).AddFloat64(time.Now().Sub(start).Seconds())
+		return fmt.Errorf(".%q: could not read file %q: %w", status, fileName, err)
 	}
 	defer reader.Close()
 	h := sha1.New()
 	if _, err := io.Copy(h, reader); err != nil {
-		return fmt.Errorf("io.Copy: %v", err)
+		return fmt.Errorf("checksum calculation failed io.Copy: %w", err)
 	}
 	gotChecksum := fmt.Sprintf("%x", h.Sum(nil))
-	wantChecksum := fileName[len(fileNamePrefix):len(fileName)]
+	wantChecksum := fileName[len(fileNamePrefix):]
 	if gotChecksum != wantChecksum {
 		return fmt.Errorf("the calculated checksum: %q does not match the checksum in the file name: %q", gotChecksum, wantChecksum)
 	}
-	logger.Infof("verified consiistency for object %q in bucket %q.", fileName, bucketName)
+	logger.Infof("verified consistency for object %q in bucket %q", fileName, bucketName)
 	return nil
 }
