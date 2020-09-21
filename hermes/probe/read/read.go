@@ -41,7 +41,7 @@ const (
 	minFileID               = 1
 	maxFileID               = 50
 	maxFileSizeBytes        = 1000
-	hermesAPILatencySeconds = "hermes_api_latency_s"
+	hermesAPILatencySeconds = "hermes_api_latency_seconds"
 )
 
 func verifyFileExists(ctx context.Context, client stiface.Client, target *probe.Target, fileName string, fileID int32) error {
