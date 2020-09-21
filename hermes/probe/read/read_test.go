@@ -1,3 +1,24 @@
+// Copyright 2020 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// Author: Alicja Kwiecinska, GitHub: alicjakwie
+//
+// Package read contains all of the logic necessary to verify the availability and consistency of the file contents and names in GCS.
+//
+// TODO(#76) change the type of fileID to int
+// TODO(#79) unify  total space alocated Mib or MiB
+
 package read
 
 import (
@@ -26,7 +47,7 @@ func TestReadFile(t *testing.T) {
 		&probepb.Target{
 			Name:                   "hermes",
 			TargetSystem:           probepb.Target_GOOGLE_CLOUD_STORAGE,
-			TotalSpaceAllocatedMib: int64(1),
+			TotalSpaceAllocatedMib: 1,
 			BucketName:             "test_bucket_probe0",
 		},
 		&journalpb.StateJournal{
@@ -61,7 +82,7 @@ func TestReadFile(t *testing.T) {
 	probeTarget := &probepb.Target{
 		Name:                   "hermes",
 		TargetSystem:           probepb.Target_GOOGLE_CLOUD_STORAGE,
-		TotalSpaceAllocatedMib: int64(100),
+		TotalSpaceAllocatedMib: 1,
 		BucketName:             "test_bucket_probe0",
 	}
 
@@ -72,10 +93,10 @@ func TestReadFile(t *testing.T) {
 
 	ctx := context.Background()
 	client := fakegcs.NewClient()
-	bucketName := "test_bucket_probe0"
-	bucketHandle := client.Bucket(bucketName)
-	if err := bucketHandle.Create(ctx, bucketName, nil); err != nil {
-		t.Fatalf("error creating bucket %q: %v", bucketName, err)
+	bucket := "test_bucket_probe0"
+	bucketHandle := client.Bucket(bucket)
+	if err := bucketHandle.Create(ctx, bucket, nil); err != nil {
+		t.Fatalf("error creating bucket %q: %v", bucket, err)
 	}
 	logger, err := logger.NewCloudproberLog(readTestProbeName)
 	if err != nil {
@@ -87,10 +108,10 @@ func TestReadFile(t *testing.T) {
 		wantErr      bool
 	}{
 		{3, 3, false},
-		{4, 51, true},
-		{10, 12, true},
-		{12, 10, false},
-		{7, 4, false},
+		{2, 51, true},
+		{8, 7, true},
+		{10, 10, false},
+		{4, 4, false},
 		{6, 0, true},
 	}
 	for _, tc := range tests {
@@ -98,7 +119,7 @@ func TestReadFile(t *testing.T) {
 			t.Fatalf("CreateFile(fileID: %d) set up failed %v", tc.fileIDCreate, err)
 		}
 		if err := ReadFile(ctx, target, tc.fileIDRead, fileSizeBytes, client, logger); (err != nil) != tc.wantErr {
-			t.Errorf("ReadFile(fileID: %d) = %w, expected: %v", tc.fileIDRead, err, tc.wantErr)
+			t.Errorf("ReadFile(fileID: %d) = %w, want: %v", tc.fileIDRead, err, tc.wantErr)
 		}
 	}
 }
