@@ -30,10 +30,10 @@ type Target struct {
 	// Target stores the proto config for the target to be probed.
 	Target *probepb.Target
 
-	// Journal stores the state of MonitorProbe as a combination of a next operation intent enum and a filenames map.
+	// Journal stores the state of a probe run as a combination of a next operation intent enum and a filenames map.
 	Journal *journalpb.StateJournal
 
-	// LatencyMetrics stores the api call and probe operation latency for a given target run.
+	// LatencyMetrics stores the API call and probe operation latency for a given target run.
 	// Metrics are stored with additional labels to record operation type and exit status.
 	LatencyMetrics *metrics.Metrics
 }
