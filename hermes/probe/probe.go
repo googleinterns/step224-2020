@@ -33,30 +33,18 @@ import (
 	cpmetrics "github.com/google/cloudprober/metrics"
 	"github.com/google/cloudprober/probes/options"
 	"github.com/googleinterns/step224-2020/hermes/probe/metrics"
+	"github.com/googleinterns/step224-2020/hermes/probe/target"
 
 	probepb "github.com/googleinterns/step224-2020/config/proto"
 	journalpb "github.com/googleinterns/step224-2020/hermes/proto"
 )
-
-// Target holds all of the required information and state for a given target run.
-type Target struct {
-	// Target stores the proto config for the target to be probed.
-	Target *probepb.Target
-
-	// Journal stores the state of MonitorProbe as a combination of a next operation intent enum and a filenames map.
-	Journal *journalpb.StateJournal
-
-	// LatencyMetrics stores the api call and probe operation latency for a given target run.
-	// Metrics are stored with additional labels to record operation type and exit status.
-	LatencyMetrics *metrics.Metrics
-}
 
 // Probe holds aggregate information about all probe runs, per-target.
 // It also holds the config and options used to initialise the probe.
 type Probe struct {
 	name    string
 	config  *probepb.HermesProbeDef
-	targets []*Target
+	targets []*target.Target
 	opts    *options.Options
 	logger  *logger.Logger
 }
@@ -88,7 +76,7 @@ func (mp *Probe) Init(name string, opts *options.Options) error {
 	mp.config = conf
 
 	for _, t := range mp.config.GetTargets() {
-		mp.targets = append(mp.targets, &Target{
+		mp.targets = append(mp.targets, &target.Target{
 			Target: t,
 			Journal: &journalpb.StateJournal{
 				Intent:    &journalpb.Intent{},
@@ -107,8 +95,9 @@ func (mp *Probe) Init(name string, opts *options.Options) error {
 // This is a required method to implement the cloudprober.Probes.Probe interface.
 // Arguments:
 //	- ctx: context provided for cancelling probe.
-//	- metricChan: unidirectional channel used for sending metrics to be surfaced.
-func (mp *Probe) Start(ctx context.Context, metricChan chan<- *cpmetrics.EventMetrics) {
+//	- metricChan: bidirectional channel used for sending metrics to be surfaced.
+//		-> Must be bidirectional to satisfy cloudprober.Probes.Probe interface.
+func (mp *Probe) Start(ctx context.Context, metricChan chan *cpmetrics.EventMetrics) {
 	probeTicker := time.NewTicker(mp.interval())
 
 	for {
@@ -129,12 +118,14 @@ func (mp *Probe) Start(ctx context.Context, metricChan chan<- *cpmetrics.EventMe
 func reportMetrics(run *metrics.Metrics, metricChan chan<- *cpmetrics.EventMetrics) {
 	for _, op := range run.ProbeOpLatency {
 		for _, m := range op {
+			m.Timestamp = time.Now()
 			metricChan <- m
 		}
 	}
 
 	for _, call := range run.APICallLatency {
 		for _, m := range call {
+			m.Timestamp = time.Now()
 			metricChan <- m
 		}
 	}
@@ -149,22 +140,24 @@ func (mp *Probe) runProbe(ctx context.Context, metricChan chan<- *cpmetrics.Even
 	var wg sync.WaitGroup
 	for _, t := range mp.targets {
 		wg.Add(1)
-		go func(t *Target) {
+		go func(t *target.Target) {
 			defer wg.Done()
-			var err error
-			if t.LatencyMetrics, err = metrics.NewMetrics(mp.config, t.Target); err != nil {
-				mp.logger.Errorf(err.Error())
-				return
+			if t.LatencyMetrics == nil {
+				var err error
+				if t.LatencyMetrics, err = metrics.NewMetrics(mp.config, t.Target); err != nil {
+					mp.logger.Errorf(err.Error())
+					return
+				}
 			}
+
 			probeCtx, _ := context.WithDeadline(ctx, time.Now().Add(mp.interval()))
 			start := time.Now()
 			exitStatus, err := mp.runProbeForTarget(probeCtx, t)
 			if err != nil {
 				mp.logger.Errorf(err.Error())
-				t.LatencyMetrics.ProbeOpLatency[metrics.TotalProbeRun][exitStatus].Metric("latency").AddFloat64(time.Now().Sub(start).Seconds())
-				return
 			}
-			t.LatencyMetrics.ProbeOpLatency[metrics.TotalProbeRun][metrics.Success].Metric("latency").AddFloat64(time.Now().Sub(start).Seconds())
+
+			t.LatencyMetrics.ProbeOpLatency[metrics.TotalProbeRun][exitStatus].Metric("hermes_probe_latency_seconds").AddFloat64(time.Now().Sub(start).Seconds())
 			reportMetrics(t.LatencyMetrics, metricChan)
 		}(t)
 	}
@@ -178,7 +171,7 @@ func (mp *Probe) runProbe(ctx context.Context, metricChan chan<- *cpmetrics.Even
 // Returns:
 //	- status: returns the exit status of the probe run.
 //	- error: returns an error if one occurred during the probe run.
-func (mp *Probe) runProbeForTarget(ctx context.Context, target *Target) (metrics.ExitStatus, error) {
+func (mp *Probe) runProbeForTarget(ctx context.Context, target *target.Target) (metrics.ExitStatus, error) {
 	// TODO(evanSpendlove): Add implementation of runProbeForTarget, i.e. Hermes probing algorithm.
 	return metrics.Success, nil
 }
