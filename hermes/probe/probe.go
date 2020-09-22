@@ -134,14 +134,29 @@ func (mp *Probe) Start(ctx context.Context, metricChan chan *cpmetrics.EventMetr
 //	- run: metrics from a probe run on a target.
 //	- metricChan: metric channel passed from Cloudprober.
 func reportMetrics(run *metrics.Metrics, metricChan chan<- *cpmetrics.EventMetrics) {
+	exitStatus := metrics.ProbeFailed
+	dist, ok := run.ProbeOpLatency[metrics.TotalProbeRun][exitStatus].Metric("hermes_probe_latency_seconds").(*cpmetrics.Distribution)
+	if !ok {
+		fmt.Println("Type conversion failed for Value -> Distribution")
+	}
+	data := dist.Data()
+	fmt.Printf("\n\nProbe Run, status: %v, count: %d\n\n", exitStatus, data.Count)
 	for _, op := range run.ProbeOpLatency {
 		for _, m := range op {
+			m.Timestamp = time.Now()
 			metricChan <- m
 		}
 	}
+	dist, ok = run.ProbeOpLatency[metrics.TotalProbeRun][exitStatus].Metric("hermes_probe_latency_seconds").(*cpmetrics.Distribution)
+	if !ok {
+		fmt.Println("Type conversion failed for Value -> Distribution")
+	}
+	data = dist.Data()
+	fmt.Printf("\n\nProbe Run, status: %v, count: %d\n\n", exitStatus, data.Count)
 
 	for _, call := range run.APICallLatency {
 		for _, m := range call {
+			m.Timestamp = time.Now()
 			metricChan <- m
 		}
 	}
@@ -162,22 +177,37 @@ func (mp *Probe) runProbe(ctx context.Context, metricChan chan<- *cpmetrics.Even
 			defer wg.Done()
 			var err error
 			fmt.Println("Pre-Metrics creation")
-			if t.LatencyMetrics, err = metrics.NewMetrics(mp.config, t.Target); err != nil {
-				mp.logger.Errorf(err.Error())
-				fmt.Printf("Err: %v", err.Error())
-				return
+			if t.LatencyMetrics == nil {
+				if t.LatencyMetrics, err = metrics.NewMetrics(mp.config, t.Target); err != nil {
+					mp.logger.Errorf(err.Error())
+					fmt.Printf("Err: %v", err.Error())
+					return
+				}
+				fmt.Println("METRICS CREATED")
 			}
-			fmt.Println("METRICS CREATED")
 			probeCtx, _ := context.WithDeadline(ctx, time.Now().Add(mp.interval()))
 			start := time.Now()
 			exitStatus, err := mp.runProbeForTarget(probeCtx, t)
 			fmt.Printf("Exit status: %v, err: %v\n\n", exitStatus, err)
+			dist, ok := t.LatencyMetrics.ProbeOpLatency[metrics.TotalProbeRun][exitStatus].Metric("hermes_probe_latency_seconds").(*cpmetrics.Distribution)
+			if !ok {
+				fmt.Println("Type conversion failed for Value -> Distribution")
+			}
+			data := dist.Data()
+			fmt.Printf("Probe Run, status: %v, count: %d", exitStatus, data.Count)
 			if err != nil {
 				mp.logger.Errorf(err.Error())
 				t.LatencyMetrics.ProbeOpLatency[metrics.TotalProbeRun][exitStatus].Metric("hermes_probe_latency_seconds").AddFloat64(time.Now().Sub(start).Seconds())
-				return
+			} else {
+				t.LatencyMetrics.ProbeOpLatency[metrics.TotalProbeRun][metrics.Success].Metric("hermes_probe_latency_seconds").AddFloat64(time.Now().Sub(start).Seconds())
 			}
-			t.LatencyMetrics.ProbeOpLatency[metrics.TotalProbeRun][metrics.Success].Metric("hermes_probe_latency_seconds").AddFloat64(time.Now().Sub(start).Seconds())
+			dist, ok = t.LatencyMetrics.ProbeOpLatency[metrics.TotalProbeRun][exitStatus].Metric("hermes_probe_latency_seconds").(*cpmetrics.Distribution)
+			if !ok {
+				fmt.Println("Type conversion failed for Value -> Distribution")
+			}
+			data = dist.Data()
+			fmt.Printf("Probe Run, status: %v, count: %d", exitStatus, data.Count)
+			// fmt.Printf("Probe run output: %v\n\n", t.LatencyMetrics.ProbeOpLatency[metrics.TotalProbeRun][exitStatus])
 			reportMetrics(t.LatencyMetrics, metricChan)
 		}(t)
 	}
