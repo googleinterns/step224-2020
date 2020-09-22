@@ -161,10 +161,10 @@ func (mp *Probe) runProbe(ctx context.Context, metricChan chan<- *cpmetrics.Even
 			exitStatus, err := mp.runProbeForTarget(probeCtx, t)
 			if err != nil {
 				mp.logger.Errorf(err.Error())
-				t.LatencyMetrics.ProbeOpLatency[metrics.TotalProbeRun][exitStatus].Metric("latency").AddFloat64(time.Now().Sub(start).Seconds())
+				t.LatencyMetrics.ProbeOpLatency[metrics.TotalProbeRun][exitStatus].Metric("hermes_probe_latency_seconds").AddFloat64(time.Now().Sub(start).Seconds())
 				return
 			}
-			t.LatencyMetrics.ProbeOpLatency[metrics.TotalProbeRun][metrics.Success].Metric("latency").AddFloat64(time.Now().Sub(start).Seconds())
+			t.LatencyMetrics.ProbeOpLatency[metrics.TotalProbeRun][metrics.Success].Metric("hermes_probe_latency_seconds").AddFloat64(time.Now().Sub(start).Seconds())
 			reportMetrics(t.LatencyMetrics, metricChan)
 		}(t)
 	}
