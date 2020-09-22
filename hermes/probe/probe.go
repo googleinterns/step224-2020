@@ -38,6 +38,33 @@ import (
 	journalpb "github.com/googleinterns/step224-2020/hermes/proto"
 )
 
+// ProbeError is an error that includes an exit status for used within Hermes.
+type ProbeError struct {
+	// TODO(evanSpendlove): Refactor metrics.ExitStatus to be named something similar to metrics.APICallStatus.
+	Status metrics.ExitStatus
+	Err    error
+}
+
+// NewProbeError returns a new ProbeError containing the error and status passed.
+// Arguments:
+//	- status: pass the exit status associated with this error.
+//	- err: the underlying error.
+// Returns:
+//	- ProbeError: returns a new ProbeError object containing the args passed.
+func NewProbeError(status metrics.ExitStatus, err error) *ProbeError {
+	return &ProbeError{
+		Status: status,
+		Err:    err,
+	}
+}
+
+// Error returns the error string from the error.
+// Returns:
+//	- string: returns the error as a string.
+func (e *ProbeError) Error() string {
+	return fmt.Sprintf("%v: %v", e.Status, e.Err)
+}
+
 // Target holds all of the required information and state for a given target run.
 type Target struct {
 	// Target stores the proto config for the target to be probed.
