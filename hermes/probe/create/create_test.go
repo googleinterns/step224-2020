@@ -26,6 +26,7 @@ import (
 	"github.com/googleinterns/step224-2020/hermes/probe"
 	"github.com/googleinterns/step224-2020/hermes/probe/fakegcs"
 	"github.com/googleinterns/step224-2020/hermes/probe/metrics"
+	"github.com/googleinterns/step224-2020/hermes/probe/target"
 
 	metricpb "github.com/google/cloudprober/metrics/proto"
 	probepb "github.com/googleinterns/step224-2020/config/proto"
@@ -126,7 +127,7 @@ func TestCreateFile(t *testing.T) {
 	}
 	fileID := int32(6)
 	fileSize := 50
-	target := &probe.Target{
+	target := &target.Target{
 		&probepb.Target{
 			Name:                   "hermes",
 			TargetSystem:           probepb.Target_GOOGLE_CLOUD_STORAGE,

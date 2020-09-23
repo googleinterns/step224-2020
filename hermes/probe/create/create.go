@@ -30,8 +30,8 @@ import (
 	"cloud.google.com/go/storage"
 	"github.com/google/cloudprober/logger"
 	"github.com/googleapis/google-cloud-go-testing/storage/stiface"
-	"github.com/googleinterns/step224-2020/hermes/probe"
 	"github.com/googleinterns/step224-2020/hermes/probe/metrics"
+	"github.com/googleinterns/step224-2020/hermes/probe/target"
 	"google.golang.org/api/iterator"
 
 	pb "github.com/googleinterns/step224-2020/hermes/proto"
@@ -130,7 +130,7 @@ func (f *randomFile) fileName() (string, error) {
 //          logger: a cloudprober logger used to record the exit status of the CreateFile operation in a target bucket. The logger passed MUST be a valid logger.
 // Returns:
 //          error: an error string with detailed information about the status and fileID. Nil is returned when the operation is successful.
-func CreateFile(ctx context.Context, target *probe.Target, fileID int32, fileSize int, client stiface.Client, logger *logger.Logger) error {
+func CreateFile(ctx context.Context, target *target.Target, fileID int32, fileSize int, client stiface.Client, logger *logger.Logger) error {
 	f, err := newRandomFile(fileID, fileSize)
 	if err != nil {
 		return err

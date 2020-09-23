@@ -1,14 +1,14 @@
 // Copyright 2020 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in copliance with the License.
+// you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
 //     https://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or iplied.
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
@@ -16,10 +16,10 @@
 // - Alicja Kwiecinska (kwiecinskaa@google.com) github: alicjakwie
 // - Evan Spendlove, GitHub: evanSpendlove.
 //
-// probe iplements a probe that monitors a storage system using the
+// probe implements a probe that monitors a storage system using the
 // Hermes algorithm.
 
-// Package probe iplements the probe that Hermes uses to monitor
+// Package probe implements the probe that Hermes uses to monitor
 // a storage system.
 package probe
 
@@ -139,7 +139,7 @@ func reportMetrics(run *metrics.Metrics, metricChan chan<- *cpmetrics.EventMetri
 // runProbe runs the probe against each target, collects metrics on probe run
 // and surface metrics to Cloudprober.
 // Arguments:
-//	- ctx: pass context to allow for coplete cancellation of the probe.
+//	- ctx: pass context to allow for complete cancellation of the probe.
 //	- metricChan: pass the metrics channel for surfacing metrics to Cloudprober.
 func (p *Probe) runProbe(ctx context.Context, metricChan chan<- *cpmetrics.EventMetrics) {
 	var wg sync.WaitGroup
@@ -180,6 +180,6 @@ func (p *Probe) runProbe(ctx context.Context, metricChan chan<- *cpmetrics.Event
 //	- status: returns the exit status of the probe run.
 //	- error: returns an error if one occurred during the probe run.
 func (p *Probe) runProbeForTarget(ctx context.Context, target *target.Target) (metrics.ExitStatus, error) {
-	// TODO(evanSpendlove): Add iplementation of runProbeForTarget, i.e. Hermes probing algorithm.
+	// TODO(evanSpendlove): Add implementation of runProbeForTarget, i.e. Hermes probing algorithm.
 	return metrics.Success, nil
 }
