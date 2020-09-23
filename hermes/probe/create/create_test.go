@@ -1,3 +1,5 @@
+// Copyright 2020 Google LLC
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -23,7 +25,6 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/googleinterns/step224-2020/hermes/probe"
 	"github.com/googleinterns/step224-2020/hermes/probe/fakegcs"
 	"github.com/googleinterns/step224-2020/hermes/probe/metrics"
 	"github.com/googleinterns/step224-2020/hermes/probe/target"

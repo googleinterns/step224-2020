@@ -14,9 +14,9 @@
 //
 // Author: Alicja Kwiecinska, GitHub: alicjakwie
 //
-// package create contains all of the logic necessary to create files with randomized contents in GCS.
-//
 // TODO(#76) change the type of fileID to int
+
+// Package create contains all of the logic necessary to create files with randomized contents in GCS.
 package create
 
 import (
@@ -192,7 +192,7 @@ func CreateFile(ctx context.Context, target *target.Target, fileID int32, fileSi
 		return fmt.Errorf("expected exactly one file in bucket %q with prefix %q; found %d: %v", bucketName, fileNamePrefix, len(namesFound), namesFound)
 	}
 	if namesFound[0] != fileName {
-		fmt.Errorf("CreateFile check failed: filename matching %q prefix: %q; want %q", fileNamePrefix, namesFound[0], filaName)
+		fmt.Errorf("CreateFile check failed: filename matching %q prefix: %q; want %q", fileNamePrefix, namesFound[0], fileName)
 	}
 	target.LatencyMetrics.APICallLatency[metrics.APIListFiles][metrics.Success].Metric(hermesAPILatencySeconds).AddFloat64(finish.Sub(start).Seconds())
 

@@ -14,8 +14,6 @@
 //
 // Author: Alicja Kwiecinska, GitHub: alicjakwie
 //
-// Package read contains all of the logic necessary to verify the availability and consistency of the file contents and names in GCS.
-//
 // TODO(#76) change the type of fileID to int
 // TODO(#79) unify  total space alocated Mib or MiB
 
@@ -27,7 +25,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/cloudprober/logger"
-	"github.com/googleinterns/step224-2020/hermes/probe"
 	"github.com/googleinterns/step224-2020/hermes/probe/create"
 	"github.com/googleinterns/step224-2020/hermes/probe/fakegcs"
 	"github.com/googleinterns/step224-2020/hermes/probe/metrics"

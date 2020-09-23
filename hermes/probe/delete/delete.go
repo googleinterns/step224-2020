@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
+// Author: Evan Spendlove, GitHub: evanSpendlove
+//
 // Delete_file implements the probe operation for deleting a file in a
 // storage system.
 
