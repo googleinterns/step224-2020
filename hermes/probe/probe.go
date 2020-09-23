@@ -15,9 +15,6 @@
 // Authors:
 // - Alicja Kwiecinska (kwiecinskaa@google.com) github: alicjakwie
 // - Evan Spendlove, GitHub: evanSpendlove.
-//
-// probe implements a probe that monitors a storage system using the
-// Hermes algorithm.
 
 // Package probe implements the probe that Hermes uses to monitor
 // a storage system.
@@ -30,11 +27,11 @@ import (
 	"time"
 
 	"github.com/google/cloudprober/logger"
-	cpmetrics "github.com/google/cloudprober/metrics"
 	"github.com/google/cloudprober/probes/options"
 	"github.com/googleinterns/step224-2020/hermes/probe/metrics"
 	"github.com/googleinterns/step224-2020/hermes/probe/target"
 
+	cpmetrics "github.com/google/cloudprober/metrics"
 	probepb "github.com/googleinterns/step224-2020/config/proto"
 	journalpb "github.com/googleinterns/step224-2020/hermes/proto"
 )
@@ -54,14 +51,14 @@ type Probe struct {
 	logger  *logger.Logger
 }
 
-// interval returns the probing interval in seconds as a time.Duration.
+// interval returns the probing interval as a time.Duration.
 // Returns:
 //	- time.Duration: returns the probing interval
 func (p *Probe) interval() time.Duration {
 	return time.Duration(p.config.GetIntervalSec()) * time.Second
 }
 
-// timeout returns the probe timeout in seconds as a time.Duration.
+// timeout returns the probe timeout as a time.Duration.
 // Returns:
 //	- time.Duration: returns the probe timeout
 func (p *Probe) timeout() time.Duration {
@@ -103,14 +100,14 @@ func (p *Probe) Init(name string, opts *options.Options) error {
 //	- metricChan: bidirectional channel used for sending metrics to be surfaced.
 //		- Must be bidirectional to satisfy cloudprober.Probes.Probe interface.
 func (p *Probe) Start(ctx context.Context, metricChan chan *cpmetrics.EventMetrics) {
-	probeTicker := time.NewTicker(p.interval())
+	ticker := time.NewTicker(p.interval())
 
 	for {
 		select {
 		case <-ctx.Done():
-			probeTicker.Stop()
+			ticker.Stop()
 			return
-		case <-probeTicker.C:
+		case <-ticker.C:
 			p.runProbe(ctx, metricChan)
 		}
 	}
