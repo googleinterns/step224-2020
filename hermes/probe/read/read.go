@@ -14,10 +14,10 @@
 //
 // Author: Alicja Kwiecinska, GitHub: alicjakwie
 //
+// Package read contains all of the logic necessary to verify the availability and consistency of the file contents and names in GCS.
+//
 // TODO(#76) change the type of fileID to int
 // TODO(#79) unify  total space alocated Mib or MiB
-
-// Package read contains all of the logic necessary to verify the availability and consistency of the file contents and names in GCS.
 package read
 
 import (
@@ -30,8 +30,8 @@ import (
 	"cloud.google.com/go/storage"
 	"github.com/google/cloudprober/logger"
 	"github.com/googleapis/google-cloud-go-testing/storage/stiface"
+	"github.com/googleinterns/step224-2020/hermes/probe"
 	"github.com/googleinterns/step224-2020/hermes/probe/metrics"
-	"github.com/googleinterns/step224-2020/hermes/probe/target"
 	"google.golang.org/api/iterator"
 )
 
@@ -44,7 +44,7 @@ const (
 	hermesAPILatencySeconds = "hermes_api_latency_seconds"
 )
 
-func verifyFileExists(ctx context.Context, client stiface.Client, target *target.Target, fileName string, fileID int32) error {
+func verifyFileExists(ctx context.Context, client stiface.Client, target *probe.Target, fileName string, fileID int32) error {
 	bucket := target.Target.GetBucketName()
 	fileNamePrefix := fmt.Sprintf(FileNameFormat, fileID, "")
 	query := &storage.Query{Prefix: fileNamePrefix}
@@ -88,7 +88,7 @@ func verifyFileExists(ctx context.Context, client stiface.Client, target *target
 //          logger: a cloudprober logger used to record the exit status of the ReadFile operation in a target bucket. The logger passed MUST be a valid logger.
 // Returns:
 //          error: an error string with detailed information about the status and fileID. Nil is returned when the operation is successful.
-func ReadFile(ctx context.Context, target *target.Target, fileID int32, fileSize int, client stiface.Client, logger *logger.Logger) error {
+func ReadFile(ctx context.Context, target *probe.Target, fileID int32, fileSize int, client stiface.Client, logger *logger.Logger) error {
 	if fileID < minFileID || fileID > maxFileID {
 		return fmt.Errorf("invalid argument: fileID = %d; want %d <= fileID <= %d", fileID, minFileID, maxFileID)
 	}

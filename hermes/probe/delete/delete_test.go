@@ -29,7 +29,6 @@ import (
 	"github.com/googleapis/google-cloud-go-testing/storage/stiface"
 	"github.com/googleinterns/step224-2020/hermes/probe"
 	"github.com/googleinterns/step224-2020/hermes/probe/fakegcs"
-	"github.com/googleinterns/step224-2020/hermes/probe/target"
 	"google.golang.org/api/iterator"
 
 	metricpb "github.com/google/cloudprober/metrics/proto"
@@ -88,7 +87,7 @@ const (
 )
 
 // genTestTarget generates an initialised test Target struct.
-func genTestTarget(cfg *monitorpb.HermesProbeDef, t *testing.T) *target.Target {
+func genTestTarget(cfg *monitorpb.HermesProbeDef, t *testing.T) *probe.Target {
 	filenames := make(map[int32]string)
 
 	for i := firstID; i <= lastID; i++ {
@@ -106,7 +105,7 @@ func genTestTarget(cfg *monitorpb.HermesProbeDef, t *testing.T) *target.Target {
 		t.Fatalf("could not initialise metrics using config and target provided: %v", err)
 	}
 
-	return &target.Target{
+	return &probe.Target{
 		Target: cfg.GetTargets()[0],
 		Journal: &journalpb.StateJournal{
 			Intent:    &journalpb.Intent{},

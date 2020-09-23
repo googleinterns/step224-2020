@@ -160,7 +160,7 @@ func NewMetrics(conf *probepb.HermesProbeDef, target *probepb.Target) (*Metrics,
 				AddMetric("hermes_probe_latency_seconds", probeOpLatDist.Clone()).
 				AddLabel("storage_system", target.GetTargetSystem().String()).
 				AddLabel("target", fmt.Sprintf("%s:%s", target.GetName(), target.GetBucketName())).
-				AddLabel("probe_operation", ProbeOpName[op]).
+				AddLabel("probe_operation_type", ProbeOpName[op]).
 				AddLabel("exit_status", ExitStatusName[e])
 		}
 	}
@@ -177,7 +177,7 @@ func NewMetrics(conf *probepb.HermesProbeDef, target *probepb.Target) (*Metrics,
 				AddMetric("hermes_api_latency_seconds", apiCallLatDist.Clone()).
 				AddLabel("storage_system", target.GetTargetSystem().String()).
 				AddLabel("target", fmt.Sprintf("%s:%s", target.GetName(), target.GetBucketName())).
-				AddLabel("api_call", APICallName[call]).
+				AddLabel("probe_operation_type", APICallName[call]).
 				AddLabel("exit_status", ExitStatusName[e])
 		}
 	}
