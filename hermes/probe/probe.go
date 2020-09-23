@@ -69,7 +69,7 @@ func (p *Probe) timeout() time.Duration {
 }
 
 // Init initializes the probe with the given parameters.
-// This is a required method to iplement the cloudprober.Probes.Probe interface.
+// This is a required method to implement the cloudprober.Probes.Probe interface.
 func (p *Probe) Init(name string, opts *options.Options) error {
 	// Cast from Cloudprober defined interface to HermesProbeDef.
 	// This allows for accessing the variables and methods of a HermesProbeDef object.
