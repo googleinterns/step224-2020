@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
+// Author: Evan Spendlove, GitHub: evanSpendlove
+//
 // Delete_file implements the probe operation for deleting a file in a
 // storage system.
 
@@ -27,8 +29,8 @@ import (
 	"cloud.google.com/go/storage"
 	"github.com/google/cloudprober/logger"
 	"github.com/googleapis/google-cloud-go-testing/storage/stiface"
-	"github.com/googleinterns/step224-2020/hermes/probe"
 	"github.com/googleinterns/step224-2020/hermes/probe/metrics"
+	"github.com/googleinterns/step224-2020/hermes/probe/target"
 	"google.golang.org/api/iterator"
 
 	pb "github.com/googleinterns/step224-2020/hermes/proto"
@@ -57,7 +59,7 @@ const (
 //		- FileMissing: the file to be deleted could not be found in the target bucket.
 //		- BucketMissing: the target bucket on this target system was not found.
 //		- ProbeFailed: there was an error during one of the API calls and the probe failed.
-func DeleteFile(ctx context.Context, fileID int32, target *probe.Target, client stiface.Client, logger *logger.Logger) (int32, error) {
+func DeleteFile(ctx context.Context, fileID int32, target *target.Target, client stiface.Client, logger *logger.Logger) (int32, error) {
 	bucket := target.Target.GetBucketName()
 
 	if fileID < minFileIDToDelete || fileID > maxFileIDToDelete {
