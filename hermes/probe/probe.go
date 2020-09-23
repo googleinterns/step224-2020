@@ -97,7 +97,7 @@ func (p *Probe) Init(name string, opts *options.Options) error {
 
 // Start runs the probe indefinitely, unless cancelled, at the configured interval.
 // Probe metrics will be sent via the metricChan at the end of the probe run.
-// This is a required method to iplement the cloudprober.Probes.Probe interface.
+// This is a required method to implement the cloudprober.Probes.Probe interface.
 // Arguments:
 //	- ctx: context provided for cancelling probe.
 //	- metricChan: bidirectional channel used for sending metrics to be surfaced.
