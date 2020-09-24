@@ -15,10 +15,10 @@
 // Author: Evan Spendlove, GitHub: evanSpendlove
 
 // Package journal implements the probe operation for checking if the Journal file
-// on the target storage system is present. It also verifies the contetns of
+// on the target storage system is present. It also verifies the contents of
 // the file. The Journal stores the state of Hermes as a map of file IDs to
 // filenames. It also stores the intent to complete the next operation.
-// This allows Hermes to recover its state if it is interruped during its
+// This allows Hermes to recover its state if it is interrupted during its
 // algorithm.
 package journal
 
@@ -51,7 +51,7 @@ const (
 	apiLatency        = "hermes_api_latency_seconds"
 )
 
-// UpdateJournal writes the current in-memory journal proto a new journal file on
+// UpdateJournal writes the current in-memory journal proto to a new journal file on
 // the target system. It then deletes the old journal file located on the system.
 // Arguments:
 //	- ctx: context so this probe can be cancelled if needed.
@@ -64,7 +64,7 @@ const (
 func UpdateJournal(ctx context.Context, target *probe.Target, client stiface.Client, logger *logger.Logger) *probe.ProbeError {
 	contents, err := proto.Marshal(target.Journal)
 	if err != nil {
-		return probe.NewProbeError(metrics.ProbeFailed, err)
+		return probe.NewProbeError(metrics.ProbeFailed, fmt.Errorf("UpdateJournal(): failed to marshal journal contents: %w", err))
 	}
 
 	file := &journalFile{
@@ -102,8 +102,7 @@ func UpdateJournal(ctx context.Context, target *probe.Target, client stiface.Cli
 		return err
 	}
 
-	target.Journal.Intent = nil
-	logger.Debug("UpdateJournal(): Nil file update complete.")
+	logger.Debug("UpdateJournal(): journal file update complete.")
 	return nil
 }
 
@@ -150,18 +149,19 @@ func CheckJournal(ctx context.Context, target *probe.Target, client stiface.Clie
 		return err
 	}
 
-	logger.Debug("CheckJournal() completed successfully, nil file is valid.")
+	logger.Debug("CheckJournal() completed successfully, journal file is valid.")
 	return nil
 }
 
-// findJournal checks that the journal file exists on the target system.
+// findJournal checks that the journal file exists on the target system
+// and returns its filename if it does.
 // Arguments:
 //	- ctx: context so this probe can be cancelled if needed.
 //	- target: target run information.
 //	- client: initialised storage client for this target system.
 //	- logger: logger associated with the probe calling this function.
 // Returns:
-//	- journalFile: a journalFile struct with the file name recorded
+//	- fileName: the file name of the Journal file on the target system.
 //	- err: error exit statuses are well defined in metrics.go
 func findJournal(ctx context.Context, target *probe.Target, client stiface.Client, logger *logger.Logger) (string, *probe.ProbeError) {
 	bucket := target.Target.GetBucketName()
@@ -175,10 +175,12 @@ func findJournal(ctx context.Context, target *probe.Target, client stiface.Clien
 		// 		If two and only differ by intent, prefer the one with intent.
 		// TODO(evanSpendlove): Look into adding a datetime to the journal proto.
 		obj, err := objIter.Next()
-		if err == iterator.Done {
+		switch err {
+		case iterator.Done:
 			return probe.NewProbeError(metrics.FileMissing, fmt.Errorf("findJournal(): unable to find journal file: %w", err))
-		}
-		if err != nil {
+		case nil:
+			break
+		default:
 			return probe.NewProbeError(metrics.APICallFailed, fmt.Errorf("findJournal(): unable to list files: %w", err))
 		}
 		*fileName = obj.Name
@@ -189,16 +191,16 @@ func findJournal(ctx context.Context, target *probe.Target, client stiface.Clien
 	return *fileName, err
 }
 
-// readJournal returns the file contents of the journal on the target system
+// readJournal returns the file contents of the journal on the target system.
 // Arguments:
 //	- ctx: context so this probe can be cancelled if needed.
-//	- file: a journalFile struct with the file name recorded
+//	- fileName: the file name of the Journal file on the target system.
 //	- target: target run information.
 //	- client: initialised storage client for this target system.
 //	- logger: logger associated with the probe calling this function.
 // Returns:
 //	- []byte: file contents read from the journal on the target system.
-//	- err: error exit statuses are well defined in metrics.go
+//	- err: error exit statuses are well defined in metrics.go.
 func readJournal(ctx context.Context, filename string, target *probe.Target, client stiface.Client, logger *logger.Logger) ([]byte, *probe.ProbeError) {
 	bucket := target.Target.GetBucketName()
 	fileObject := client.Bucket(bucket).Object(filename)
@@ -266,6 +268,8 @@ func resolveIntent(ctx context.Context, journal *pb.StateJournal, target *probe.
 			logger.Debug("File delete not complete yet")
 			delete(journal.Filenames, int32(fileID))
 		}
+	default:
+		return probe.NewProbeError(metrics.ProbeFailed, fmt.Errorf("resolveIntent(): unexpected FileOperation parsed as part of intent: %v", journal.Intent.FileOperation))
 	}
 	journal.Intent = nil
 	return nil
@@ -275,7 +279,7 @@ func resolveIntent(ctx context.Context, journal *pb.StateJournal, target *probe.
 // and that the journal matches the existing in-memory proto.
 // Arguments:
 //	- ctx: context so this probe can be cancelled if needed.
-//	- nilFile: a nilFile struct with the file name and contents recorded
+//	- file: a journalFile struct with the file name, contents and checksum recorded.
 //  - journal: unmarshalled journal struct, to be verified, read from the target storage system.
 //	- target: target run information.
 //	- client: initialised storage client for this target system.
@@ -286,7 +290,7 @@ func verifyJournal(ctx context.Context, file *journalFile, journal *pb.StateJour
 	if err := file.validateChecksum(); err != nil {
 		return err
 	}
-	logger.Debug("verifyJournal(): journal  contents checksum verified against filename.")
+	logger.Debug("verifyJournal(): journal contents checksum verified against filename.")
 
 	if diff := cmp.Diff(target.Journal, journal, protocmp.Transform()); diff != "" {
 		return probe.NewProbeError(metrics.FileCorrupted, fmt.Errorf("verifyJournal(): in-memory journal does not match the journal on the target system (-want +got):\n%s", diff))
@@ -298,7 +302,7 @@ func verifyJournal(ctx context.Context, file *journalFile, journal *pb.StateJour
 // RecordAPILatency records the time taken for the function passed to complete.
 // It then stores this in the metrics map passed using the provided labels.
 // Arguments:
-//	- m: api latency metric map for this target.
+//	- m: API latency metric map for this target.
 //	- call: metric label for this API call
 //	- f: target function to be timed.
 // Returns:
@@ -321,19 +325,25 @@ type journalFile struct {
 // checksumContents generates the checksum of the contents of the file object and stores
 // the checksum in the checksum field of the object.
 // Returns:
-// 		- err: returned if there is an error when checksumming the contents.
+// 	- err: returned if there is an error when checksumming the contents.
 func (j *journalFile) checksumContents() error {
 	h := sha1.New()
-	if _, err := io.Copy(h, j.reader()); err != nil {
-		return fmt.Errorf("verifyNilFile(): unable to compute checksum of file contents: %w", err)
+
+	length, err := io.Copy(h, j.reader())
+	if err != nil {
+		return fmt.Errorf("checksumContents(): unable to compute checksum of file contents: %w", err)
 	}
+	if length != int64(len(j.contents)) {
+		return fmt.Errorf("checksumContents(): failed to generate checksum of all of the journal file contents")
+	}
+
 	j.checksum = h.Sum(nil)
 	return nil
 }
 
 // validateChecksum validates that the checksum matches the checksum
 // in the file name.
-// The checksum in the filename is being validated against the file contents
+// The checksum in the filename is being validated against the file contents.
 // This will return false if the file contents have been updated
 // without the file name being changed accordingly.
 // Returns:
@@ -347,11 +357,9 @@ func (j *journalFile) validateChecksum() *probe.ProbeError {
 	}
 
 	hexChecksum := fmt.Sprintf("%x", j.checksum)
-
 	if hexChecksum != j.name[len(journalFilePrefix):] {
 		return probe.NewProbeError(metrics.ProbeFailed, fmt.Errorf("validateChecksum(): checksum %q does not match checksum in name %q", j.checksum, j.name[len(journalFilePrefix):]))
 	}
-
 	return nil
 }
 
@@ -365,12 +373,12 @@ func (j *journalFile) reader() io.Reader {
 // unmarshalContents unmarshals the contents of the journal file and returns
 // the completed proto struct.
 // Returns:
-// 		- journal: proto struct containing the unmarshalled contents of the journal
-//		- err: error if once occurs during the unmarshalling process.
+// 	- journal: proto struct containing the unmarshalled contents of the journal.
+//	- err: error if once occurs during the unmarshalling process.
 func (j *journalFile) unmarshalContents() (*pb.StateJournal, *probe.ProbeError) {
 	journal := &pb.StateJournal{}
 	if err := proto.Unmarshal(j.contents, journal); err != nil {
-		return nil, probe.NewProbeError(metrics.FileCorrupted, fmt.Errorf("verifyNilFile(): unable to unmarshal nil file proto: %w", err))
+		return nil, probe.NewProbeError(metrics.FileCorrupted, fmt.Errorf("unmarshalContents(): unable to unmarshal journal file proto: %w", err))
 	}
 	return journal, nil
 }
